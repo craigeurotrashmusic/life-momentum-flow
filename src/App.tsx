@@ -42,10 +42,10 @@ const App = () => {
               path="/" 
               element={
                 isAuthenticated 
-                  ? hasCompletedOnboarding 
-                    ? <Home /> 
+                  ? <Home /> 
+                  : hasCompletedOnboarding 
+                    ? <Navigate to="/auth" replace /> 
                     : <Navigate to="/onboarding" replace />
-                  : <Navigate to="/auth" replace />
               } 
             />
             
@@ -59,13 +59,13 @@ const App = () => {
               } 
             />
             
-            {/* Onboarding route - for users who are authenticated but haven't completed onboarding */}
+            {/* Onboarding route - for new users who haven't completed onboarding */}
             <Route 
               path="/onboarding" 
               element={
-                !hasCompletedOnboarding 
-                  ? <Onboarding />
-                  : <Navigate to="/" replace />
+                hasCompletedOnboarding 
+                  ? <Navigate to="/auth" replace />
+                  : <Onboarding />
               } 
             />
             

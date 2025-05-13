@@ -32,10 +32,12 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
   const handleComplete = async () => {
     setIsSubmitting(true);
     try {
+      // Mark onboarding as completed in localStorage
       localStorage.setItem('hasCompletedOnboarding', 'true');
       
       // Redirect to auth page for account creation
       navigate("/auth");
+      
     } catch (error) {
       toast({
         title: "Error",
