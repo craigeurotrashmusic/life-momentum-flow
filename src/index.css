@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -77,8 +76,8 @@
   
   html {
     @apply scroll-smooth overflow-y-auto overscroll-y-none;
-    -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* This applies to the root scroller */
+    scroll-behavior: smooth; /* Global smooth scroll for anchor links etc. */
   }
   
   body {
@@ -106,6 +105,7 @@
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
   
+  /* These general snap utilities can remain for other uses, but .card-stack will not use them. */
   .snap-container {
     @apply snap-y snap-mandatory;
     scroll-snap-type: y mandatory;
@@ -118,24 +118,36 @@
   }
 }
 
+/*
+  .card-stack is no longer a scroll container itself.
+  Removed:
+  - scroll-snap-type: y mandatory;
+  - overflow-y: scroll;
+  - height: 100vh;
+  - -webkit-overflow-scrolling: touch; (less relevant now)
+  - overscroll-behavior-y: contain; (less relevant now)
+  It's now just a flex container for the cards within the main scrollable area.
+*/
 .card-stack {
   width: 100%;
   max-width: 100%;
-  padding: 1rem 0;
-  scroll-snap-type: y mandatory;
-  overflow-y: scroll;
-  height: 100vh;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  padding: 1rem 0; 
+  /* display: flex; /* Consider adding flex properties if needed for card layout */
+  /* flex-direction: column; /* If using flex */
+  /* gap: 1rem; /* If using flex, replaces margin-bottom on items */
 }
 
+/*
+  .card-stack-item no longer needs scroll-snap properties.
+  Removed:
+  - scroll-snap-align: start;
+  - scroll-snap-stop: always;
+*/
 .card-stack-item {
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
-  min-height: 85vh;
+  min-height: 85vh; /* Keeps cards tall to ensure scrolling content */
   width: 100%;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  padding: 1rem; /* This might be duplicative if cards have their own internal padding. Review card components. */
+  margin-bottom: 1rem; /* Provides spacing between cards */
 }
 
 .carousel {

@@ -1,9 +1,7 @@
 
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
-// Removed EpochCard import
-// import EpochCard from '@/components/cards/EpochCard'; 
-import EpochTracker from '@/components/organisms/EpochTracker'; // Added EpochTracker import
+import EpochTracker from '@/components/organisms/EpochTracker';
 import FocusCard from '@/components/cards/FocusCard';
 import HabitCard from '@/components/cards/HabitCard';
 import SupplementCard from '@/components/cards/SupplementCard';
@@ -12,12 +10,12 @@ import SimulationCard from '@/components/cards/SimulationCard';
 import { useToast } from '@/components/ui/use-toast';
 import ClarityHubCard from '@/components/organisms/ClarityHubCard';
 
-// Lazy load the Nudge Card for better performance
 const NudgeCard = lazy(() => import('@/components/cards/NudgeCard'));
 
 const Home = () => {
   const { toast } = useToast();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // scrollContainerRef is no longer needed for the custom scroll logic
+  // const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Welcome toast for demo purposes
@@ -26,41 +24,27 @@ const Home = () => {
       description: "Your life dashboard is ready",
     });
     
-    // Add smooth scrolling with snap behavior
-    const handleScroll = () => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      
-      // Find closest snap point when user stops scrolling
-      const scrollTimeout = setTimeout(() => {
-        const scrollPosition = container.scrollTop;
-        const containerHeight = container.clientHeight;
-        const closestSnapPoint = Math.round(scrollPosition / containerHeight) * containerHeight;
-        
-        container.scrollTo({
-          top: closestSnapPoint,
-          behavior: 'smooth'
-        });
-      }, 100);
-      
-      return () => clearTimeout(scrollTimeout);
-    };
-    
-    const container = scrollContainerRef.current;
-    if (container) {
-      container.addEventListener('scrollend', handleScroll);
-      return () => container.removeEventListener('scrollend', handleScroll);
-    }
-  }, [toast]); // Added toast to dependency array as it was missing before
+    // Removed the custom scroll handling logic that caused snapping.
+    // The smooth scrolling will now be handled by CSS on the main container.
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-background pb-16">
       <Header />
       
-      <main ref={scrollContainerRef} className="pt-16 container mx-auto h-screen">
+      {/* 
+        Updated main element:
+        - Removed ref={scrollContainerRef} as it's no longer used by the removed JS.
+        - Added `overflow-y-auto` to ensure it's the scroll container.
+        - Added `scroll-smooth` Tailwind class for `scroll-behavior: smooth;`.
+      */}
+      <main className="pt-16 container mx-auto h-screen overflow-y-auto scroll-smooth">
+        {/* 
+          The div with `card-stack` class will no longer be a scroll container itself.
+          It will lay out its children within the scrollable `main` element.
+        */}
         <div className="card-stack no-scrollbar pb-20">
           <ClarityHubCard />
-          {/* Replaced EpochCard with EpochTracker */}
           <EpochTracker /> 
           <FocusCard />
           <HabitCard />
