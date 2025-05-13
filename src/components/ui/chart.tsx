@@ -1,4 +1,6 @@
+
 import * as React from "react"
+import { Suspense } from "react" 
 import * as RechartsPrimitive from "recharts"
 
 import { cn } from "@/lib/utils"
@@ -32,6 +34,11 @@ function useChart() {
   return context
 }
 
+// Lazy load ResponsiveContainer to improve performance
+const LazyResponsiveContainer = React.lazy(() => 
+  import('recharts').then(module => ({ default: module.ResponsiveContainer }))
+)
+
 const ChartContainer = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -39,10 +46,15 @@ const ChartContainer = React.forwardRef<
     children: React.ComponentProps<
       typeof RechartsPrimitive.ResponsiveContainer
     >["children"]
+    aspectRatio?: number | string
   }
->(({ id, className, children, config, ...props }, ref) => {
+>(({ id, className, children, config, aspectRatio = "4/3", ...props }, ref) => {
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+
+  const aspectRatioStyle = typeof aspectRatio === 'number' 
+    ? { paddingBottom: `${100 / aspectRatio}%` }
+    : { paddingBottom: `calc(100% / (${aspectRatio}))` }
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -50,15 +62,19 @@ const ChartContainer = React.forwardRef<
         data-chart={chartId}
         ref={ref}
         className={cn(
-          "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+          "flex justify-center w-full text-xs relative [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-border/50 [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-border [&_.recharts-radial-bar-background-sector]:fill-muted [&_.recharts-rectangle.recharts-tooltip-cursor]:fill-muted [&_.recharts-reference-line_[stroke='#ccc']]:stroke-border [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
           className
         )}
         {...props}
       >
         <ChartStyle id={chartId} config={config} />
-        <RechartsPrimitive.ResponsiveContainer>
-          {children}
-        </RechartsPrimitive.ResponsiveContainer>
+        <div className="aspect-[4/3] w-full relative"> 
+          <Suspense fallback={<div className="w-full h-full flex items-center justify-center">Loading chart...</div>}>
+            <LazyResponsiveContainer width="100%" height="100%">
+              {children}
+            </LazyResponsiveContainer>
+          </Suspense>
+        </div>
       </div>
     </ChartContext.Provider>
   )

@@ -1,37 +1,53 @@
 
-import * as React from "react"
+import { useState, useEffect } from "react"
 
-const MOBILE_BREAKPOINT = 768
+const MOBILE_BREAKPOINT = 768 // px
 
 export function useIsMobile() {
-  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+  const [isMobile, setIsMobile] = useState<boolean | undefined>(undefined)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
     
-    // Debounced resize handler
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    // Setup vh CSS variable for mobile browsers
+    const setVhVariable = () => {
+      const vh = window.innerHeight * 0.01
+      document.documentElement.style.setProperty('--vh', `${vh}px`)
+    }
     
-    const onChange = () => {
+    // Initial setup
+    setVhVariable()
+    
+    // Debounced resize handler
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    
+    const handleResize = () => {
       if (timeoutId) {
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutId)
       }
       
       timeoutId = setTimeout(() => {
-        setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
-      }, 100);
+        setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+        setVhVariable()
+      }, 100)
     }
     
-    mql.addEventListener("change", onChange)
+    // Set initial value
     setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     
+    // Add event listeners
+    window.addEventListener("resize", handleResize)
+    mql.addEventListener("change", handleResize)
+    
+    // Cleanup
     return () => {
-      mql.removeEventListener("change", onChange)
+      window.removeEventListener("resize", handleResize)
+      mql.removeEventListener("change", handleResize)
       if (timeoutId) {
-        clearTimeout(timeoutId);
+        clearTimeout(timeoutId)
       }
     }
   }, [])
 
-  return !!isMobile
+  return isMobile
 }

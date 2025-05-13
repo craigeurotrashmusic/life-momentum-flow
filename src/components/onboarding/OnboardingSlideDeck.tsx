@@ -1,5 +1,5 @@
 
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import WealthSlide from "./slides/WealthSlide";
 import EmotionSlide from "./slides/EmotionSlide";
 import CommunitySlide from "./slides/CommunitySlide";
 import CompletionSlide from "./slides/CompletionSlide";
+import { useSwipeable } from "react-swipeable";
 
 const OnboardingSlideDeck = () => {
   const navigate = useNavigate();
@@ -28,12 +29,26 @@ const OnboardingSlideDeck = () => {
     }
   };
 
+  const goToPrevSlide = () => {
+    if (currentSlide > 0) {
+      setCurrentSlide((prev) => prev - 1);
+    }
+  };
+
   const handleCompletion = () => {
     // This will be called by CompletionSlide, but we're not using it anymore
     // as the CompletionSlide now handles navigation directly
     localStorage.setItem('hasCompletedOnboarding', 'true');
     navigate("/auth");
   };
+  
+  // Setup swipe handlers
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => goToNextSlide(),
+    onSwipedRight: () => goToPrevSlide(),
+    trackMouse: false,
+    preventScrollOnSwipe: true,
+  });
   
   // Render the current slide
   const renderCurrentSlide = () => {
@@ -105,7 +120,18 @@ const OnboardingSlideDeck = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-hidden">
-      <div className="flex justify-end p-4">
+      <div className="flex justify-between p-4">
+        <button 
+          onClick={goToPrevSlide}
+          disabled={currentSlide === 0}
+          className="text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Previous slide"
+        >
+          {currentSlide > 0 && (
+            <ChevronRight className="w-5 h-5 transform rotate-180" />
+          )}
+        </button>
+        
         <div className="flex space-x-2 items-center">
           <span className="text-sm text-muted-foreground">
             {currentSlide + 1} of {totalSlides}
@@ -127,7 +153,10 @@ const OnboardingSlideDeck = () => {
         </div>
       </div>
       
-      <div className="h-[calc(100vh-80px)] snap-y snap-mandatory overflow-y-auto">
+      <div 
+        {...swipeHandlers}
+        className="h-[calc(var(--vh,1vh)*100-var(--header-height))] overflow-y-auto snap-y snap-mandatory"
+      >
         <div className="snap-start h-full">
           {renderCurrentSlide()}
         </div>
