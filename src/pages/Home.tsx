@@ -1,6 +1,9 @@
+
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
-import EpochCard from '@/components/cards/EpochCard';
+// Removed EpochCard import
+// import EpochCard from '@/components/cards/EpochCard'; 
+import EpochTracker from '@/components/organisms/EpochTracker'; // Added EpochTracker import
 import FocusCard from '@/components/cards/FocusCard';
 import HabitCard from '@/components/cards/HabitCard';
 import SupplementCard from '@/components/cards/SupplementCard';
@@ -48,7 +51,7 @@ const Home = () => {
       container.addEventListener('scrollend', handleScroll);
       return () => container.removeEventListener('scrollend', handleScroll);
     }
-  }, []); // toast was missing from dependency array, added it.
+  }, [toast]); // Added toast to dependency array as it was missing before
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -57,7 +60,8 @@ const Home = () => {
       <main ref={scrollContainerRef} className="pt-16 container mx-auto h-screen">
         <div className="card-stack no-scrollbar pb-20">
           <ClarityHubCard />
-          <EpochCard />
+          {/* Replaced EpochCard with EpochTracker */}
+          <EpochTracker /> 
           <FocusCard />
           <HabitCard />
           <Suspense fallback={<div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-5 h-[400px] flex items-center justify-center">Loading Nudge Card...</div>}>
