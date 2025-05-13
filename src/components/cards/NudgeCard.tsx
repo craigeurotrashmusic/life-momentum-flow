@@ -10,6 +10,7 @@ import NudgeEngine from '../nudge/NudgeEngine';
 import FlowStateDetection from '../nudge/FlowStateDetection';
 import FloatingNudge from '../nudge/FloatingNudge';
 import NudgeHistory from '../nudge/NudgeHistory';
+import FloatingActionButton from '../nudge/FloatingActionButton';
 
 // Lazy load the settings card
 const SettingsCard = lazy(() => import('./SettingsCard'));
@@ -68,6 +69,9 @@ const NudgeCard = () => {
       
       {/* Floating Nudge Pill */}
       <FloatingNudge />
+      
+      {/* Floating Action Button */}
+      <FloatingActionButton />
     </NudgeProvider>
   );
 };

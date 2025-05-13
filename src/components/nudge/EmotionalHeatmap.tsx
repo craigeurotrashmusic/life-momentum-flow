@@ -1,200 +1,94 @@
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNudge } from './NudgeContext';
-import { getEmotionalStateClass, getEnergyLevelClass } from './utils';
-import { EmotionalState } from './types';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { LineChart, Line, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
-import { Clock, ArrowRight, BarChart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getEmotionalStateClass } from './utils';
+import { Activity, BarChart3, Brain } from 'lucide-react';
+import { EmotionalInsight } from './types';
+import EmotionalInsightCard from './EmotionalInsightCard';
 
-// Mock emotional state history
-const mockEmotionalStates: EmotionalState[] = [
-  { state: 'focused', level: 82, timestamp: new Date(Date.now() - 30 * 60000) },
-  { state: 'energized', level: 90, timestamp: new Date(Date.now() - 60 * 60000) },
-  { state: 'neutral', level: 65, timestamp: new Date(Date.now() - 90 * 60000) },
-  { state: 'distracted', level: 45, timestamp: new Date(Date.now() - 120 * 60000) },
-  { state: 'tired', level: 30, timestamp: new Date(Date.now() - 150 * 60000) },
-  { state: 'neutral', level: 50, timestamp: new Date(Date.now() - 180 * 60000) },
-  { state: 'focused', level: 75, timestamp: new Date(Date.now() - 210 * 60000) },
-  { state: 'energized', level: 85, timestamp: new Date(Date.now() - 240 * 60000) },
-];
+// Mock emotional insight data
+const mockInsight: EmotionalInsight = {
+  date: new Date(),
+  summary: "You've been maintaining good focus today despite some energy fluctuations. Your emotional state is generally balanced with brief periods of high focus.",
+  primaryEmotion: "focused",
+  emotionalVariability: 35,
+  energyTrend: "increasing",
+  peakPerformanceTimes: ["10:00 AM - 12:00 PM", "3:00 PM - 5:00 PM"],
+  recommendations: [
+    "Schedule deep work during your morning peak performance window",
+    "Take a short break around 2:30 PM when your energy typically dips",
+    "Consider mindfulness exercises before your afternoon focus period",
+    "Limit notifications during your peak performance times"
+  ]
+};
 
 const EmotionalHeatmap = () => {
   const { emotionalState, energyLevel } = useNudge();
-  const [view, setView] = useState<'current' | 'history' | 'chart'>('current');
-  const [emotionalHistory] = useState<EmotionalState[]>(mockEmotionalStates);
+  const [showInsight, setShowInsight] = useState(false);
   
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Prepare data for chart
-  const chartData = emotionalHistory.map(entry => ({
-    time: formatTime(entry.timestamp),
-    energy: entry.level,
-    state: entry.state
-  })).reverse();
-
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-medium">Emotional Heatmap</h3>
-        <Tabs 
-          defaultValue="current" 
-          className="w-[200px]" 
-          onValueChange={(value) => setView(value as 'current' | 'history' | 'chart')}
+      <div className="flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <Brain size={18} />
+          <h3 className="text-lg font-medium">Emotional State</h3>
+        </div>
+        <button 
+          onClick={() => setShowInsight(!showInsight)}
+          className="text-xs text-primary flex items-center gap-1 hover:underline"
         >
-          <TabsList className="grid grid-cols-3 h-7">
-            <TabsTrigger value="current" className="text-xs">Current</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs">History</TabsTrigger>
-            <TabsTrigger value="chart" className="text-xs">Chart</TabsTrigger>
-          </TabsList>
-        </Tabs>
+          <BarChart3 size={14} />
+          {showInsight ? 'Hide Insight' : 'View Insight'}
+        </button>
       </div>
       
-      {view === 'current' && (
-        <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-xl">
-          <div className="space-y-2 flex-1">
-            <div className="flex items-center gap-2">
-              <span className="text-sm">Current state:</span>
-              <span className={`px-2 py-0.5 rounded text-sm font-medium capitalize ${getEmotionalStateClass(emotionalState)}`}>
-                {emotionalState}
-              </span>
+      <div className="bg-secondary/20 p-3 rounded-lg">
+        <div className="flex justify-between items-center mb-3">
+          <div>
+            <span className="text-xs text-muted-foreground">Current State:</span>
+            <div className={`px-2 py-0.5 text-xs inline-block rounded capitalize mt-1 ${getEmotionalStateClass(emotionalState)}`}>
+              {emotionalState}
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Energy level</div>
-              <div className="flex items-center">
-                <div className="w-full h-2 bg-secondary/30 rounded-full mr-2">
-                  <div 
-                    className={`h-2 rounded-full ${getEnergyLevelClass(energyLevel)}`}
-                    style={{ width: `${energyLevel}%` }}
-                  />
-                </div>
-                <span className="text-sm font-medium w-9">{energyLevel}%</span>
+          </div>
+          <div className="text-right">
+            <span className="text-xs text-muted-foreground">Energy Level:</span>
+            <div className="flex items-center gap-2 mt-1">
+              <Activity size={14} className="text-blue-500" />
+              <div className="bg-secondary/50 w-24 h-2 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-blue-500"
+                  style={{ width: `${energyLevel}%` }}
+                />
               </div>
+              <span className="text-xs">{energyLevel}%</span>
             </div>
           </div>
         </div>
-      )}
-      
-      {view === 'history' && (
-        <div className="p-3 bg-secondary/30 rounded-xl space-y-3">
-          <h4 className="text-sm font-medium">State History</h4>
-          <div className="space-y-2">
-            {emotionalHistory.map((state, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${getEnergyLevelClass(state.level)}`} />
-                  <span className={`capitalize ${getEmotionalStateClass(state.state)} bg-opacity-10 px-1 py-0.5 rounded text-xs`}>
-                    {state.state}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-16 h-1.5 bg-secondary/30 rounded-full">
-                    <div 
-                      className={`h-1.5 rounded-full ${getEnergyLevelClass(state.level)}`}
-                      style={{ width: `${state.level}%` }}
-                    />
-                  </div>
-                  <span className="text-xs text-muted-foreground">{formatTime(state.timestamp)}</span>
-                </div>
-              </div>
+        
+        {/* Simplified heatmap visualization */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Morning</span>
+            <span>Afternoon</span>
+            <span>Evening</span>
+          </div>
+          <div className="flex h-10">
+            {['focused', 'energized', 'neutral', 'distracted', 'neutral', 'focused', 'energized', 'neutral', 'tired'].map((state, i) => (
+              <div 
+                key={i} 
+                className={`flex-1 ${getEmotionalStateClass(state)} opacity-${Math.floor(Math.random() * 3) + 7}0`}
+                style={{ opacity: Math.random() * 0.4 + 0.6 }}
+              />
             ))}
           </div>
         </div>
-      )}
-      
-      {view === 'chart' && (
-        <div className="p-3 bg-secondary/30 rounded-xl space-y-3">
-          <div className="h-[200px] w-full">
-            <ChartContainer
-              config={{
-                energy: {
-                  label: "Energy Level",
-                  theme: { dark: "#3b82f6", light: "#3b82f6" }
-                }
-              }}
-            >
-              <LineChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis 
-                  dataKey="time" 
-                  tick={{ fontSize: 10 }}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis 
-                  domain={[0, 100]}
-                  tick={{ fontSize: 10 }} 
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <ChartTooltip
-                  content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                      return (
-                        <div className="rounded-lg border bg-background p-2 shadow-sm">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">
-                                Time
-                              </span>
-                              <span className="font-bold text-xs">
-                                {payload[0].payload.time}
-                              </span>
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-xs text-muted-foreground">
-                                Energy
-                              </span>
-                              <span className="font-bold text-xs">
-                                {payload[0].payload.energy}%
-                              </span>
-                            </div>
-                            <div className="flex flex-col col-span-2">
-                              <span className="text-xs text-muted-foreground">
-                                State
-                              </span>
-                              <span className={`font-bold text-xs capitalize ${getEmotionalStateClass(payload[0].payload.state)}`}>
-                                {payload[0].payload.state}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="energy"
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ChartContainer>
-          </div>
-          <div className="flex justify-between items-center text-xs text-muted-foreground pt-2">
-            <span>Energy level over time</span>
-            <div className="flex items-center gap-1">
-              <Clock size={12} />
-              <span>Last 4 hours</span>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className="flex justify-between items-center text-xs text-muted-foreground">
-        <p>Your peak emotional state occurs mid-morning</p>
-        <div className="flex items-center gap-1">
-          <Clock size={12} />
-          <span>Updated just now</span>
-        </div>
       </div>
+      
+      {showInsight && (
+        <div className="mt-4 animate-fade-in">
+          <EmotionalInsightCard insight={mockInsight} />
+        </div>
+      )}
     </div>
   );
 };
