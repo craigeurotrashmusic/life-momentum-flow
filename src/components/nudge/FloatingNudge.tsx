@@ -1,22 +1,58 @@
 
-import React, { useState } from 'react';
-import { X, BellMinus, Bell, Clock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, BellMinus, Bell, Clock, Check, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useNudge } from './NudgeContext';
 import { getNudgeTypeClass } from './utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/components/ui/sonner';
 
 const FloatingNudge = () => {
   const { activatedNudge, isNudgeVisible, dismissNudge, snoozeNudge } = useNudge();
   const [showSnoozeOptions, setShowSnoozeOptions] = useState(false);
   const [snoozeTime, setSnoozeTime] = useState('5');
+  const [showFeedbackOptions, setShowFeedbackOptions] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   const handleSnooze = () => {
     snoozeNudge();
     setShowSnoozeOptions(false);
+    toast.success(`Nudge snoozed for ${snoozeTime} minutes`);
   };
+  
+  const handlePositiveFeedback = () => {
+    toast.success("Thanks for your feedback! We'll improve your nudges.");
+    dismissNudge();
+  };
+  
+  const handleNegativeFeedback = () => {
+    toast.success("Thanks for your feedback! We'll show fewer nudges like this.");
+    dismissNudge();
+  };
+  
+  // Auto-dismiss timer
+  useEffect(() => {
+    if (isNudgeVisible) {
+      setTimeRemaining(15); // 15 seconds auto-dismiss
+      const timer = setInterval(() => {
+        setTimeRemaining(prev => prev !== null ? prev - 1 : null);
+      }, 1000);
+      
+      return () => {
+        clearInterval(timer);
+        setTimeRemaining(null);
+      };
+    }
+  }, [isNudgeVisible]);
+  
+  // Auto-dismiss when timer reaches 0
+  useEffect(() => {
+    if (timeRemaining === 0) {
+      dismissNudge();
+    }
+  }, [timeRemaining, dismissNudge]);
 
   return (
     <AnimatePresence>
@@ -37,12 +73,17 @@ const FloatingNudge = () => {
             <div className={`px-2 py-0.5 text-xs rounded capitalize ${getNudgeTypeClass(activatedNudge.type)}`}>
               {activatedNudge.type}
             </div>
-            <button 
-              onClick={dismissNudge}
-              className="p-1 rounded-full hover:bg-secondary/30 transition-colors"
-            >
-              <X size={14} />
-            </button>
+            <div className="flex items-center gap-2">
+              {timeRemaining !== null && (
+                <span className="text-xs text-muted-foreground">{timeRemaining}s</span>
+              )}
+              <button 
+                onClick={dismissNudge}
+                className="p-1 rounded-full hover:bg-secondary/30 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
           </div>
           <p className="text-sm">{activatedNudge.message}</p>
           
@@ -77,6 +118,42 @@ const FloatingNudge = () => {
             ) : null}
           </AnimatePresence>
           
+          <AnimatePresence>
+            {showFeedbackOptions ? (
+              <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="flex flex-col gap-2 mt-3">
+                  <p className="text-xs text-muted-foreground">Was this nudge helpful?</p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 flex items-center justify-center gap-1"
+                      onClick={handlePositiveFeedback}
+                    >
+                      <ThumbsUp size={12} />
+                      <span className="text-xs">Yes, helpful</span>
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1 flex items-center justify-center gap-1"
+                      onClick={handleNegativeFeedback}
+                    >
+                      <ThumbsDown size={12} />
+                      <span className="text-xs">Not useful</span>
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+          
           <div className="flex justify-end gap-2 mt-3">
             <TooltipProvider>
               <Tooltip>
@@ -84,7 +161,10 @@ const FloatingNudge = () => {
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={() => setShowSnoozeOptions(!showSnoozeOptions)}
+                    onClick={() => {
+                      setShowSnoozeOptions(!showSnoozeOptions);
+                      setShowFeedbackOptions(false);
+                    }}
                   >
                     <BellMinus size={16} />
                   </Button>
@@ -95,14 +175,48 @@ const FloatingNudge = () => {
               </Tooltip>
             </TooltipProvider>
             
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => {
+                      setShowFeedbackOptions(!showFeedbackOptions);
+                      setShowSnoozeOptions(false);
+                    }}
+                  >
+                    <ThumbsUp size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Give feedback</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
             <Button 
               variant="default" 
               size="sm"
+              className="flex items-center gap-1"
               onClick={dismissNudge}
             >
-              Got it
+              <Check size={14} />
+              <span>Got it</span>
             </Button>
           </div>
+          
+          {/* Progress bar for auto-dismiss */}
+          {timeRemaining !== null && (
+            <div className="mt-2 w-full bg-secondary/30 h-0.5 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full bg-blue-500"
+                initial={{ width: "100%" }}
+                animate={{ width: `${(timeRemaining / 15) * 100}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

@@ -1,131 +1,195 @@
 
 import { useState } from 'react';
-import { Calendar, Check, X, Clock } from 'lucide-react';
+import { History, Check, X, Clock, AlertCircle, Filter } from 'lucide-react';
 import { useNudge } from './NudgeContext';
 import { getNudgeTypeClass } from './utils';
 import { NudgeHistoryItem } from './types';
-
-// Mock history data for demonstration
-const mockHistoryItems: NudgeHistoryItem[] = [
-  {
-    nudge: {
-      id: 'h1',
-      message: "Take a 5-minute break to reset your focus",
-      type: 'reminder',
-      priority: 3,
-      timestamp: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
-    },
-    userResponse: 'accepted',
-    responseTime: new Date(Date.now() - 60 * 59 * 1000) // 59 minutes ago
-  },
-  {
-    nudge: {
-      id: 'h2',
-      message: "Your calendar shows 3 meetings this afternoon. Consider preparing now.",
-      type: 'insight',
-      priority: 4,
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
-    },
-    userResponse: 'dismissed',
-    responseTime: new Date(Date.now() - 3 * 60 * 59 * 1000) // 2.9 hours ago
-  },
-  {
-    nudge: {
-      id: 'h3',
-      message: "You've completed 5 focus sessions today. Great work!",
-      type: 'motivation',
-      priority: 3,
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000) // 5 hours ago
-    },
-    userResponse: 'snoozed',
-    responseTime: new Date(Date.now() - 5 * 60 * 59 * 1000) // 4.9 hours ago
-  }
-];
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuLabel, 
+  DropdownMenuSeparator, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const NudgeHistory = () => {
-  const [historyItems] = useState<NudgeHistoryItem[]>(mockHistoryItems);
+  const { nudgeHistory } = useNudge();
   const [filter, setFilter] = useState<'all' | 'accepted' | 'dismissed' | 'snoozed'>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 3;
   
-  const filteredItems = historyItems.filter(item => 
-    filter === 'all' || item.userResponse === filter
+  // Filter history based on selected filter
+  const filteredHistory = filter === 'all' 
+    ? nudgeHistory 
+    : nudgeHistory.filter(item => item.userResponse === filter);
+  
+  // Calculate total pages
+  const totalPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  
+  // Get current items
+  const currentItems = filteredHistory.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
   );
   
+  // Helper to get response icon
   const getResponseIcon = (response: 'accepted' | 'dismissed' | 'snoozed') => {
     switch (response) {
-      case 'accepted': return <Check size={14} className="text-green-500" />;
-      case 'dismissed': return <X size={14} className="text-red-500" />;
-      case 'snoozed': return <Clock size={14} className="text-amber-500" />;
+      case 'accepted':
+        return <Check size={14} className="text-green-500" />;
+      case 'dismissed':
+        return <X size={14} className="text-red-500" />;
+      case 'snoozed':
+        return <Clock size={14} className="text-amber-500" />;
+      default:
+        return null;
     }
   };
   
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  // Helper to get the count of each response type
+  const getResponseCount = (type: 'accepted' | 'dismissed' | 'snoozed') => {
+    return nudgeHistory.filter(item => item.userResponse === type).length;
+  };
+  
+  // Format time difference
+  const formatTimeDiff = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - new Date(date).getTime();
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
   };
 
   return (
     <div className="space-y-3">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Nudge History</h3>
-        <div className="flex text-xs">
-          <button 
-            className={`px-2 py-1 rounded-l-md ${filter === 'all' ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-            onClick={() => setFilter('all')}
-          >
-            All
-          </button>
-          <button 
-            className={`px-2 py-1 ${filter === 'accepted' ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-            onClick={() => setFilter('accepted')}
-          >
-            Accepted
-          </button>
-          <button 
-            className={`px-2 py-1 ${filter === 'dismissed' ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-            onClick={() => setFilter('dismissed')}
-          >
-            Dismissed
-          </button>
-          <button 
-            className={`px-2 py-1 rounded-r-md ${filter === 'snoozed' ? 'bg-primary/20 text-primary' : 'hover:bg-secondary/50'}`}
-            onClick={() => setFilter('snoozed')}
-          >
-            Snoozed
-          </button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1">
+                <Filter size={14} />
+                <span className="capitalize">{filter}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Filter by response</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setFilter('all')}>
+                <div className="flex justify-between w-full">
+                  <span>All</span>
+                  <Badge variant="secondary" className="ml-2">{nudgeHistory.length}</Badge>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('accepted')}>
+                <div className="flex justify-between w-full">
+                  <span>Accepted</span>
+                  <Badge variant="secondary" className="ml-2">{getResponseCount('accepted')}</Badge>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('dismissed')}>
+                <div className="flex justify-between w-full">
+                  <span>Dismissed</span>
+                  <Badge variant="secondary" className="ml-2">{getResponseCount('dismissed')}</Badge>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setFilter('snoozed')}>
+                <div className="flex justify-between w-full">
+                  <span>Snoozed</span>
+                  <Badge variant="secondary" className="ml-2">{getResponseCount('snoozed')}</Badge>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       
-      <div className="space-y-2">
-        {filteredItems.length > 0 ? (
-          filteredItems.map(item => (
-            <div 
-              key={item.nudge.id} 
-              className="p-3 bg-secondary/30 rounded-xl space-y-2"
-            >
-              <div className="flex justify-between items-start">
+      {currentItems.length === 0 ? (
+        <div className="p-4 bg-secondary/30 rounded-xl flex flex-col items-center justify-center">
+          <History size={24} className="text-muted-foreground mb-2" />
+          <p className="text-sm text-muted-foreground">No history found</p>
+          {filter !== 'all' && (
+            <Button variant="link" size="sm" onClick={() => setFilter('all')}>
+              View all history
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {currentItems.map((item: NudgeHistoryItem, index) => (
+            <div key={index} className="p-3 bg-secondary/30 rounded-xl">
+              <div className="flex justify-between items-start mb-1">
                 <div className={`px-1.5 py-0.5 text-xs rounded capitalize ${getNudgeTypeClass(item.nudge.type)}`}>
                   {item.nudge.type}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Calendar size={12} />
-                  <span>{formatTime(item.nudge.timestamp)}</span>
+                <div className="flex items-center gap-1 bg-secondary/50 px-2 py-0.5 rounded">
+                  {getResponseIcon(item.userResponse)}
+                  <span className="text-xs capitalize">{item.userResponse}</span>
                 </div>
               </div>
-              <p className="text-sm">{item.nudge.message}</p>
+              
+              <p className="text-sm mb-2">{item.nudge.message}</p>
+              
               <div className="flex justify-between items-center text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  {getResponseIcon(item.userResponse)}
-                  <span className="capitalize">{item.userResponse}</span>
+                  <AlertCircle size={12} />
+                  <span>Priority {item.nudge.priority}</span>
                 </div>
-                <span>{formatTime(item.responseTime)}</span>
+                <div className="flex items-center gap-1">
+                  <Clock size={12} />
+                  <span>{formatTimeDiff(item.responseTime)}</span>
+                </div>
               </div>
             </div>
-          ))
-        ) : (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            No history items match your filter
-          </div>
-        )}
-      </div>
+          ))}
+          
+          {totalPages > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {[...Array(totalPages)].map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink 
+                      onClick={() => setCurrentPage(i + 1)}
+                      isActive={currentPage === i + 1}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
+      )}
     </div>
   );
 };
