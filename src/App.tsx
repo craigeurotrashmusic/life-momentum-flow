@@ -8,20 +8,25 @@ import { useEffect, useState } from 'react';
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
 
-  // Check authentication status on mount
+  // Check authentication status and onboarding completion on mount
   useEffect(() => {
     const authStatus = localStorage.getItem('isAuthenticated') === 'true';
     setIsAuthenticated(authStatus);
+    
+    const onboardingStatus = localStorage.getItem('hasCompletedOnboarding') === 'true';
+    setHasCompletedOnboarding(onboardingStatus);
   }, []);
 
   // Show nothing while checking auth status
-  if (isAuthenticated === null) {
+  if (isAuthenticated === null || hasCompletedOnboarding === null) {
     return null;
   }
 
@@ -34,11 +39,27 @@ const App = () => {
           <Routes>
             <Route 
               path="/" 
-              element={isAuthenticated ? <Home /> : <Navigate to="/auth" replace />} 
+              element={
+                isAuthenticated 
+                  ? hasCompletedOnboarding 
+                    ? <Home /> 
+                    : <Navigate to="/onboarding" replace />
+                  : <Navigate to="/auth" replace />
+              } 
             />
             <Route 
               path="/auth" 
               element={isAuthenticated ? <Navigate to="/" replace /> : <Auth />} 
+            />
+            <Route 
+              path="/onboarding" 
+              element={
+                isAuthenticated 
+                  ? hasCompletedOnboarding 
+                    ? <Navigate to="/" replace /> 
+                    : <Onboarding />
+                  : <Navigate to="/auth" replace />
+              } 
             />
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -87,3 +87,154 @@ export const getSimulation = async (id: string): Promise<SimulationResult> => {
     throw error;
   }
 };
+
+// Onboarding API endpoints
+
+// Vision slide
+interface VisionData {
+  values: [string, string, string];
+  goals: [string, string, string];
+}
+
+export const submitVision = async (data: VisionData): Promise<void> => {
+  try {
+    console.log("Submitting vision data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting vision data:", error);
+    throw error;
+  }
+};
+
+// Rhythm slide
+interface RhythmData {
+  highEnergyStart: string;
+  highEnergyEnd: string;
+  wakeTime: string;
+  sleepTime: string;
+}
+
+export const submitRhythm = async (data: RhythmData): Promise<void> => {
+  try {
+    console.log("Submitting rhythm data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting rhythm data:", error);
+    throw error;
+  }
+};
+
+// Health slide
+interface HealthData {
+  supplements: string[];
+  sleepHours: number;
+  exerciseFrequency: string;
+}
+
+export const submitHealth = async (data: HealthData): Promise<void> => {
+  try {
+    console.log("Submitting health data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting health data:", error);
+    throw error;
+  }
+};
+
+// Wealth slide
+interface WealthData {
+  primaryGoal: string;
+  riskTolerance: number;
+  monthlyBudget: number;
+}
+
+export const submitWealth = async (data: WealthData): Promise<void> => {
+  try {
+    console.log("Submitting wealth data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting wealth data:", error);
+    throw error;
+  }
+};
+
+// Emotion slide
+interface EmotionData {
+  moodScore: number;
+  stressors: string;
+}
+
+export const submitEmotion = async (data: EmotionData): Promise<void> => {
+  try {
+    console.log("Submitting emotion data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting emotion data:", error);
+    throw error;
+  }
+};
+
+// Community slide
+interface CommunityData {
+  groupChallenges: boolean;
+  reminderChannel: "in-app" | "push" | "email";
+}
+
+export const submitCommunity = async (data: CommunityData): Promise<void> => {
+  try {
+    console.log("Submitting community data:", data);
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // In a real implementation, this would send data to the backend
+    return;
+  } catch (error) {
+    console.error("Error submitting community data:", error);
+    throw error;
+  }
+};
+
+// Prefetch dashboard data
+export const prefetchDashboardData = async (): Promise<void> => {
+  try {
+    console.log("Prefetching dashboard data");
+    
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Set onboarding as completed
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    
+    // In a real implementation, this would prefetch data for the dashboard
+    return;
+  } catch (error) {
+    console.error("Error prefetching dashboard data:", error);
+    throw error;
+  }
+};
