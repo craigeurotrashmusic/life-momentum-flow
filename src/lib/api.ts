@@ -1,5 +1,7 @@
+
 import { toast } from "@/hooks/use-toast";
-export { ClarityMetrics } from '@/types/clarity'; 
+import type { ClarityMetrics } from '@/types/clarity'; // Import for internal use
+export type { ClarityMetrics } from '@/types/clarity'; // Re-export for other modules
 
 // Simulation types
 export type ScenarioType = "sleep" | "finance" | "workout" | "diet";

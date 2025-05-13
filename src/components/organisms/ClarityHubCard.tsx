@@ -1,14 +1,17 @@
-import React from 'react';
-import LifeCard from '@/components/cards/LifeCard'; // Changed to default import
+import React, { useState } from 'react';
+import LifeCard from '@/components/cards/LifeCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClarityHub } from '@/contexts/ClarityHubContext';
 import { ClarityPillar } from '@/types/clarity';
-import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info, BarChart, BookOpen } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
 const ClarityHubCard: React.FC = () => {
   const { metrics, isLoading, isError, error, refreshMetrics, isRefreshing } = useClarityHub();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   if (isError) {
     return (
@@ -38,7 +41,7 @@ const ClarityHubCard: React.FC = () => {
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     if (trend === 'up') return <TrendingUp className="h-4 w-4 text-green-500" />;
     if (trend === 'down') return <TrendingDown className="h-4 w-4 text-red-500" />;
-    return <MinusSquare className="h-4 w-4 text-muted-foreground" />; // Using MinusSquare for stable
+    return <MinusSquare className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getOverallScoreColor = (score: number) => {
@@ -62,7 +65,6 @@ const ClarityHubCard: React.FC = () => {
     if (metrics.flowIndex < 50) suggestedActions.push({ text: "Schedule a deep work block.", action: () => console.log("Action: Open Focus planning") });
   }
 
-
   return (
     <LifeCard 
       title="Clarity Hub" 
@@ -76,7 +78,7 @@ const ClarityHubCard: React.FC = () => {
             <Skeleton className="h-20 w-full rounded-lg" />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
-            </div> {/* Corrected closing tag for the grid div */}
+            </div>
             <Skeleton className="h-10 w-full rounded-lg" />
           </div>
         ) : (
@@ -92,11 +94,10 @@ const ClarityHubCard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Overall Clarity Score</p>
-              {/* Updated Progress component usage */}
               <Progress 
                 value={overallScore} 
-                className="w-3/4 mx-auto mt-2 h-2"  // Root/track styling (no dynamic background color here)
-                indicatorClassName={getOverallScoreColor(overallScore)} // Indicator/fill styling
+                className="w-3/4 mx-auto mt-2 h-2" 
+                indicatorClassName={getOverallScoreColor(overallScore)}
               />
             </div>
 
@@ -134,7 +135,7 @@ const ClarityHubCard: React.FC = () => {
                     <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
                     {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
                 </Button>
-                <Button variant="default" size="sm" onClick={() => console.log("View Details clicked")}>
+                <Button variant="default" size="sm" onClick={() => setIsDialogOpen(true)}>
                     View Details
                     <Info className="ml-2 h-4 w-4" />
                 </Button>
@@ -143,6 +144,72 @@ const ClarityHubCard: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Detailed Dashboard Dialog (from ClarityCard.tsx) */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[90%] max-h-[80vh] overflow-y-auto bg-background/90 backdrop-blur-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-foreground">Clarity Dashboard</DialogTitle>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <h3 className="text-lg font-medium mb-4 flex items-center text-foreground/90">
+              <TrendingUp size={18} className="mr-2 text-purple-400" />
+              Core Values Alignment
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              {coreValues.map((value) => (
+                <div key={value.name} className="p-4 bg-secondary/50 rounded-xl shadow">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-foreground/90">{value.name}</span>
+                    <span className="text-sm font-semibold text-purple-300">{value.score}%</span>
+                  </div>
+                  <Progress value={value.score} className="h-2 bg-primary/20" indicatorClassName="bg-purple-400" />
+                </div>
+              ))}
+            </div>
+            
+            <h3 className="text-lg font-medium my-4 text-foreground/90">Long-term Goals</h3>
+            <Carousel className="w-full">
+              <CarouselContent>
+                {longTermGoals.map((goal) => (
+                  <CarouselItem key={goal.name} className="md:basis-1/2 lg:basis-1/3">
+                    <div className="p-4 bg-secondary/50 rounded-xl h-full shadow flex flex-col justify-between">
+                      <div>
+                        <h4 className="font-medium mb-1 text-foreground/90">{goal.name}</h4>
+                        <p className="text-xs text-muted-foreground mb-2">Target: {goal.target}</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm text-muted-foreground">Progress</span>
+                          <span className="text-sm font-semibold text-purple-300">{goal.progress}%</span>
+                        </div>
+                        <Progress value={goal.progress} className="h-2 bg-primary/20" indicatorClassName="bg-purple-400" />
+                      </div>
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+            </Carousel>
+            
+            <h3 className="text-lg font-medium my-4 text-foreground/90">Connected Data Insights</h3>
+            <div className="p-4 bg-secondary/50 rounded-xl mb-4 shadow">
+              <h4 className="font-medium mb-2 text-foreground/90">Supplement & Habit Impact</h4>
+              <p className="text-sm text-muted-foreground">
+                Your consistent meditation habit has improved focus score by 15%
+              </p>
+            </div>
+            
+            <div className="p-4 bg-secondary/50 rounded-xl shadow">
+              <h4 className="font-medium mb-2 text-foreground/90">Financial Impact</h4>
+              <p className="text-sm text-muted-foreground">
+                Reduced discretionary spending this month has improved your wealth alignment score
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </LifeCard>
   );
 };

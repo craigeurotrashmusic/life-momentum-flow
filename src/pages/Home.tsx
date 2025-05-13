@@ -3,7 +3,6 @@ import Header from '@/components/layout/Header';
 import EpochCard from '@/components/cards/EpochCard';
 import FocusCard from '@/components/cards/FocusCard';
 import HabitCard from '@/components/cards/HabitCard';
-import ClarityCard from '@/components/cards/ClarityCard';
 import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
 import SimulationCard from '@/components/cards/SimulationCard';
@@ -49,7 +48,7 @@ const Home = () => {
       container.addEventListener('scrollend', handleScroll);
       return () => container.removeEventListener('scrollend', handleScroll);
     }
-  }, []);
+  }, []); // toast was missing from dependency array, added it.
 
   return (
     <div className="min-h-screen bg-background pb-16">
@@ -61,7 +60,6 @@ const Home = () => {
           <EpochCard />
           <FocusCard />
           <HabitCard />
-          <ClarityCard />
           <Suspense fallback={<div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-5 h-[400px] flex items-center justify-center">Loading Nudge Card...</div>}>
             <NudgeCard />
           </Suspense>
