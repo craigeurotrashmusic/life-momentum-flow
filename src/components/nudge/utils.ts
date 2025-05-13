@@ -34,3 +34,30 @@ export const getEnergyLevelClass = (level: number): string => {
   if (level > 40) return 'bg-amber-500';
   return 'bg-red-500';
 };
+
+export const formatTimeAgo = (date: Date): string => {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+  
+  let interval = seconds / 31536000;
+  if (interval > 1) return `${Math.floor(interval)}y ago`;
+  
+  interval = seconds / 2592000;
+  if (interval > 1) return `${Math.floor(interval)}mo ago`;
+  
+  interval = seconds / 86400;
+  if (interval > 1) return `${Math.floor(interval)}d ago`;
+  
+  interval = seconds / 3600;
+  if (interval > 1) return `${Math.floor(interval)}h ago`;
+  
+  interval = seconds / 60;
+  if (interval > 1) return `${Math.floor(interval)}m ago`;
+  
+  return `${Math.floor(seconds)}s ago`;
+};
+
+export const getIntensityColor = (intensity: number): string => {
+  if (intensity >= 8) return 'bg-blue-600';
+  if (intensity >= 5) return 'bg-blue-500';
+  return 'bg-blue-400';
+};

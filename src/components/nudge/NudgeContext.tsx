@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Nudge, EmotionalState } from './types';
+import { Nudge, EmotionalState, FlowPeriod, NudgeHistoryItem } from './types';
 import { toast } from '@/components/ui/sonner';
 
 interface NudgeContextType {
@@ -10,6 +10,8 @@ interface NudgeContextType {
   nudgesMuted: boolean;
   emotionalState: string;
   energyLevel: number;
+  nudgeHistory: NudgeHistoryItem[];
+  flowPeriods: FlowPeriod[];
   triggerNudge: () => void;
   dismissNudge: () => void;
   snoozeNudge: () => void;
@@ -57,6 +59,46 @@ const mockNudges: Nudge[] = [
   }
 ];
 
+// Mock flow periods
+const mockFlowPeriods: FlowPeriod[] = [
+  {
+    startTime: new Date(new Date().setHours(10, 15)),
+    endTime: new Date(new Date().setHours(11, 45)),
+    intensity: 8
+  },
+  {
+    startTime: new Date(new Date().setHours(15, 30)),
+    endTime: new Date(new Date().setHours(16, 45)),
+    intensity: 9
+  }
+];
+
+// Mock nudge history
+const mockNudgeHistory: NudgeHistoryItem[] = [
+  {
+    nudge: {
+      id: 'h1',
+      message: "Take a 5-minute break to reset your focus",
+      type: 'reminder',
+      priority: 3,
+      timestamp: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
+    },
+    userResponse: 'accepted',
+    responseTime: new Date(Date.now() - 60 * 59 * 1000) // 59 minutes ago
+  },
+  {
+    nudge: {
+      id: 'h2',
+      message: "Your calendar shows 3 meetings this afternoon. Consider preparing now.",
+      type: 'insight',
+      priority: 4,
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
+    },
+    userResponse: 'dismissed',
+    responseTime: new Date(Date.now() - 3 * 60 * 59 * 1000) // 2.9 hours ago
+  }
+];
+
 // Simulated emotional states and detection
 const emotionalStates = ['energized', 'focused', 'neutral', 'distracted', 'tired'];
 
@@ -67,6 +109,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   const [nudgesMuted, setNudgesMuted] = useState(false);
   const [emotionalState, setEmotionalState] = useState<string>('neutral');
   const [energyLevel, setEnergyLevel] = useState<number>(70);
+  const [flowPeriods, setFlowPeriods] = useState<FlowPeriod[]>(mockFlowPeriods);
+  const [nudgeHistory, setNudgeHistory] = useState<NudgeHistoryItem[]>(mockNudgeHistory);
   
   // Initialize with mock data
   useEffect(() => {
@@ -106,6 +150,16 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   
   // Function to dismiss the current nudge
   const dismissNudge = () => {
+    if (activatedNudge) {
+      // Add to history
+      const historyItem: NudgeHistoryItem = {
+        nudge: activatedNudge,
+        userResponse: 'dismissed',
+        responseTime: new Date()
+      };
+      setNudgeHistory([historyItem, ...nudgeHistory]);
+    }
+    
     setIsNudgeVisible(false);
     setTimeout(() => setActivatedNudge(null), 300);
   };
@@ -120,6 +174,14 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         timestamp: new Date(Date.now() + 300000) // Snooze for 5 minutes
       };
       setNudges([...nudges, snoozedNudge]);
+      
+      // Add to history
+      const historyItem: NudgeHistoryItem = {
+        nudge: activatedNudge,
+        userResponse: 'snoozed',
+        responseTime: new Date()
+      };
+      setNudgeHistory([historyItem, ...nudgeHistory]);
       
       toast.info("Nudge snoozed for 5 minutes", {
         duration: 3000,
@@ -153,6 +215,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         nudgesMuted,
         emotionalState,
         energyLevel,
+        nudgeHistory,
+        flowPeriods,
         triggerNudge,
         dismissNudge,
         snoozeNudge,

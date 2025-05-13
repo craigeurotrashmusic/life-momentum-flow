@@ -8,18 +8,20 @@ import EmotionalHeatmap from '../nudge/EmotionalHeatmap';
 import NudgeEngine from '../nudge/NudgeEngine';
 import FlowStateDetection from '../nudge/FlowStateDetection';
 import FloatingNudge from '../nudge/FloatingNudge';
+import NudgeHistory from '../nudge/NudgeHistory';
 
 const NudgeCardContent = () => {
   const { triggerNudge } = useNudge();
 
   return (
-    <div className="mt-2 space-y-4">
+    <div className="mt-2 space-y-5">
       <EmotionalHeatmap />
       <NudgeEngine />
       <FlowStateDetection />
+      <NudgeHistory />
       
       <Button 
-        className="w-full py-3 mt-2 rounded-xl flex items-center justify-center gap-2"
+        className="w-full py-3 mt-4 rounded-xl flex items-center justify-center gap-2"
         variant="default"
         onClick={triggerNudge}
       >
