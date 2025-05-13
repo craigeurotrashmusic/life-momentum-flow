@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import EpochCard from '@/components/cards/EpochCard';
 import FocusCard from '@/components/cards/FocusCard';
@@ -8,8 +8,10 @@ import ClarityCard from '@/components/cards/ClarityCard';
 import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
 import SimulationCard from '@/components/cards/SimulationCard';
-import NudgeCard from '@/components/cards/NudgeCard';
 import { useToast } from '@/components/ui/use-toast';
+
+// Lazy load the Nudge Card for better performance
+const NudgeCard = lazy(() => import('@/components/cards/NudgeCard'));
 
 const Home = () => {
   const { toast } = useToast();
@@ -59,7 +61,9 @@ const Home = () => {
           <FocusCard />
           <HabitCard />
           <ClarityCard />
-          <NudgeCard />
+          <Suspense fallback={<div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-5 h-[400px] flex items-center justify-center">Loading Nudge Card...</div>}>
+            <NudgeCard />
+          </Suspense>
           <SimulationCard />
           <SupplementCard />
           <ReviewCard />
