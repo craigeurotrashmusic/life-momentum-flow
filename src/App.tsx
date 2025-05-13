@@ -10,16 +10,16 @@ import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 
-// Define header height CSS variable
-useEffect(() => {
-  document.documentElement.style.setProperty('--header-height', '61px');
-}, []);
-
 const queryClient = new QueryClient();
 
 const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState<boolean | null>(null);
+
+  // Define header height CSS variable - MOVED HERE
+  useEffect(() => {
+    document.documentElement.style.setProperty('--header-height', '61px');
+  }, []);
 
   // Check authentication status and onboarding completion on mount
   useEffect(() => {
