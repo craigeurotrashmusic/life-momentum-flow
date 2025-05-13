@@ -77,7 +77,7 @@ const ClarityHubCard: React.FC = () => {
             <Skeleton className="h-20 w-full rounded-lg" />
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-4">
               {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)}
-            </Skeleton> {/* This was Skeleton, corrected */}
+            </div> {/* Corrected closing tag for the grid div */}
             <Skeleton className="h-10 w-full rounded-lg" />
           </div>
         ) : (
