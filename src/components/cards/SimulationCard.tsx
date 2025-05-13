@@ -1,27 +1,31 @@
 
-import { useState } from 'react';
-import { ChevronRight, LineChart, Settings, Zap } from 'lucide-react';
+import { useState, lazy, Suspense } from 'react';
+import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
 import LifeCard from './LifeCard';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import { 
-  LineChart as RechartsLineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  ResponsiveContainer,
-  Tooltip,
-  Legend 
-} from 'recharts';
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
+import ScenarioForm from '@/components/simulation/ScenarioForm';
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from '@/components/ui/badge';
+import { ScenarioType, SimulationParams, createSimulation, getSimulation } from '@/lib/api';
+import { useSimulationSocket } from '@/hooks/use-simulation-socket';
+import { toast } from '@/hooks/use-toast';
 
-type ScenarioType = "sleep" | "finance" | "workout" | "diet";
+// Lazy load heavy components
+const SimulationResults = lazy(() => 
+  import('@/components/simulation/SimulationResults')
+);
+const DriftCorrection = lazy(() => 
+  import('@/components/simulation/DriftCorrection')
+);
 
 interface Scenario {
   id: string;
@@ -29,88 +33,88 @@ interface Scenario {
   name: string;
   description: string;
   icon: React.ReactNode;
-  projectedImpacts: {
-    health: number;
-    wealth: number;
-    psychology: number;
-  };
-}
-
-interface SimulationData {
-  name: string;
-  health: number;
-  wealth: number;
-  psychology: number;
 }
 
 const SimulationCard = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [simulationId, setSimulationId] = useState<string | undefined>(undefined);
   
-  // Mock scenarios
+  const { isConnected, simulationResult } = useSimulationSocket(simulationId);
+
+  // Enhanced scenarios with improved descriptions
   const scenarios: Scenario[] = [
     {
       id: "sleep-deprivation",
       type: "sleep",
       name: "Sleep Deprivation",
-      description: "What if you consistently get only 5 hours of sleep?",
+      description: "What if you consistently get less sleep than recommended? Analyze the cascading effects on your health, productivity, and emotional wellbeing.",
       icon: <LineChart size={18} />,
-      projectedImpacts: {
-        health: -15,
-        wealth: -8,
-        psychology: -12
-      }
     },
     {
       id: "overspending",
       type: "finance",
-      name: "Overspending",
-      description: "What if you exceed your budget by 20% every month?",
+      name: "Budget Overrun",
+      description: "What if you exceed your monthly budget? See how your financial goals shift and identify potential impact on other life areas.",
       icon: <LineChart size={18} />,
-      projectedImpacts: {
-        health: -5,
-        wealth: -25,
-        psychology: -10
-      }
     },
     {
       id: "skip-workout",
       type: "workout",
-      name: "Skipped Workouts",
-      description: "What if you miss 50% of your scheduled workouts?",
+      name: "Missed Workouts",
+      description: "What if you miss a significant portion of your scheduled workouts? Explore how this affects your fitness trajectory and mental state.",
       icon: <LineChart size={18} />,
-      projectedImpacts: {
-        health: -20,
-        wealth: -3,
-        psychology: -15
-      }
+    },
+    {
+      id: "diet-change",
+      type: "diet",
+      name: "Diet Changes",
+      description: "What if you alter key aspects of your diet? Analyze nutritional impacts and how they ripple through your energy levels and goals.",
+      icon: <LineChart size={18} />,
     }
   ];
-  
-  // Mock simulation data (time-series data)
-  const generateSimulationData = (scenario: Scenario): SimulationData[] => {
-    const data: SimulationData[] = [];
-    const baseHealth = 80;
-    const baseWealth = 75;
-    const basePsychology = 85;
-    
-    // Generate 12 weeks of data
-    for (let i = 0; i < 12; i++) {
-      const weekMultiplier = i / 12; // Effect increases over time
-      data.push({
-        name: `Week ${i + 1}`,
-        health: Math.max(0, Math.min(100, baseHealth + scenario.projectedImpacts.health * weekMultiplier)),
-        wealth: Math.max(0, Math.min(100, baseWealth + scenario.projectedImpacts.wealth * weekMultiplier)),
-        psychology: Math.max(0, Math.min(100, basePsychology + scenario.projectedImpacts.psychology * weekMultiplier))
-      });
-    }
-    
-    return data;
-  };
   
   const handleScenarioSelect = (scenario: Scenario) => {
     setSelectedScenario(scenario);
     setIsDialogOpen(true);
+    setActiveStep(0);
+    setSimulationId(undefined);
+  };
+  
+  const handleRunSimulation = async (params: SimulationParams) => {
+    try {
+      setIsSubmitting(true);
+      const id = await createSimulation(params);
+      setSimulationId(id);
+      setActiveStep(1);
+      toast({
+        title: "Simulation Started",
+        description: "Your simulation is running. Results will be available shortly.",
+      });
+    } catch (error) {
+      console.error("Error running simulation:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  const handleApplyToClarityHub = () => {
+    toast({
+      title: "Applied to Clarity Hub",
+      description: "Simulation insights have been applied to your Clarity Hub.",
+    });
+    setIsDialogOpen(false);
+  };
+  
+  const getStepName = (step: number): string => {
+    switch (step) {
+      case 0: return "Parameters";
+      case 1: return "Results";
+      case 2: return "Corrections";
+      default: return `Step ${step + 1}`;
+    }
   };
   
   return (
@@ -135,7 +139,7 @@ const SimulationCard = () => {
                 </div>
                 <div>
                   <h4 className="font-medium">{scenario.name}</h4>
-                  <p className="text-sm text-muted-foreground">{scenario.description}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2">{scenario.description}</p>
                 </div>
               </div>
               <ChevronRight size={16} />
@@ -153,139 +157,165 @@ const SimulationCard = () => {
         </Button>
       </div>
       
-      {/* Simulation Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[90%] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
+      {/* Simulation Dialog with horizontal carousel for steps */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          setSimulationId(undefined);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="text-xl font-semibold">
               {selectedScenario ? selectedScenario.name : 'Simulation Engine'}
             </DialogTitle>
+            <div className="flex items-center space-x-2">
+              {[0, 1, 2].map((step) => (
+                <Badge 
+                  key={step} 
+                  variant={activeStep === step ? "default" : "outline"}
+                  className={`
+                    px-3 py-1 cursor-pointer
+                    ${activeStep === step ? '' : 'opacity-50'}
+                    ${step > 0 && !simulationResult ? 'pointer-events-none opacity-30' : ''}
+                  `}
+                  onClick={() => {
+                    if (step === 0 || simulationResult) {
+                      setActiveStep(step);
+                    }
+                  }}
+                >
+                  {getStepName(step)}
+                </Badge>
+              ))}
+            </div>
           </DialogHeader>
           
           <div className="py-4">
             {selectedScenario ? (
-              <>
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium mb-3">Projected Impact</h3>
-                  <p className="text-muted-foreground mb-4">{selectedScenario.description}</p>
-                  
-                  <div className="h-[300px] mb-8">
-                    <ChartContainer
-                      className="h-full"
-                      config={{
-                        health: { color: "#f87171" },
-                        wealth: { color: "#60a5fa" },
-                        psychology: { color: "#a78bfa" },
-                      }}
-                    >
-                      <RechartsLineChart
-                        data={generateSimulationData(selectedScenario)}
-                        margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="name" />
-                        <YAxis domain={[0, 100]} />
-                        <Tooltip content={<ChartTooltipContent />} />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="health" 
-                          name="Health Impact" 
-                          stroke="#f87171" 
-                          strokeWidth={2}
-                          activeDot={{ r: 8 }} 
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="wealth" 
-                          name="Wealth Impact" 
-                          stroke="#60a5fa"
-                          strokeWidth={2} 
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="psychology" 
-                          name="Psychology Impact" 
-                          stroke="#a78bfa"
-                          strokeWidth={2} 
-                        />
-                      </RechartsLineChart>
-                    </ChartContainer>
-                  </div>
-                </div>
-                
-                <h3 className="text-lg font-medium mb-3">Cascade Effects</h3>
-                <Carousel className="w-full mb-6">
+              <div className="relative">
+                <Carousel 
+                  className="w-full"
+                  opts={{ 
+                    loop: false, 
+                    align: "start",
+                    containScroll: "trimSnaps" 
+                  }}
+                  setApi={(api) => {
+                    // Manually control the carousel based on activeStep
+                    if (api) {
+                      api.scrollTo(activeStep);
+                    }
+                  }}
+                >
                   <CarouselContent>
-                    <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                      <div className="p-4 bg-secondary/30 rounded-xl h-full">
-                        <h4 className="font-medium mb-1">Health Impact</h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {selectedScenario.projectedImpacts.health < 0 
-                            ? `${Math.abs(selectedScenario.projectedImpacts.health)}% decrease in overall health metrics over time.` 
-                            : `${selectedScenario.projectedImpacts.health}% increase in overall health metrics over time.`}
-                        </p>
-                        <p className="text-sm">Affects: Energy levels, immune function, recovery rate</p>
+                    {/* Step 1: Parameters */}
+                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Simulation Parameters</h3>
+                        <p className="text-muted-foreground mb-6">{selectedScenario.description}</p>
+                        
+                        <ScenarioForm 
+                          scenarioType={selectedScenario.type}
+                          onSubmit={handleRunSimulation}
+                          isSubmitting={isSubmitting}
+                        />
                       </div>
                     </CarouselItem>
-                    <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                      <div className="p-4 bg-secondary/30 rounded-xl h-full">
-                        <h4 className="font-medium mb-1">Wealth Impact</h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {selectedScenario.projectedImpacts.wealth < 0 
-                            ? `${Math.abs(selectedScenario.projectedImpacts.wealth)}% decrease in financial growth metrics.` 
-                            : `${selectedScenario.projectedImpacts.wealth}% increase in financial growth metrics.`}
-                        </p>
-                        <p className="text-sm">Affects: Savings rate, investment returns, long-term goals</p>
+                    
+                    {/* Step 2: Results */}
+                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Simulation Results</h3>
+                        {!simulationResult ? (
+                          isConnected ? (
+                            <div className="p-8 text-center">
+                              <p className="text-muted-foreground mb-2">Simulation in progress...</p>
+                              <div className="flex justify-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center">
+                              <p className="text-muted-foreground">Run a simulation to see results</p>
+                            </div>
+                          )
+                        ) : (
+                          <Suspense fallback={<Skeleton className="w-full h-[400px]" />}>
+                            <SimulationResults result={simulationResult} />
+                          </Suspense>
+                        )}
                       </div>
                     </CarouselItem>
-                    <CarouselItem className="md:basis-1/2 lg:basis-1/3">
-                      <div className="p-4 bg-secondary/30 rounded-xl h-full">
-                        <h4 className="font-medium mb-1">Psychology Impact</h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {selectedScenario.projectedImpacts.psychology < 0 
-                            ? `${Math.abs(selectedScenario.projectedImpacts.psychology)}% decrease in mental wellbeing scores.` 
-                            : `${selectedScenario.projectedImpacts.psychology}% increase in mental wellbeing scores.`}
-                        </p>
-                        <p className="text-sm">Affects: Stress levels, cognitive performance, mood stability</p>
+                    
+                    {/* Step 3: Drift Correction */}
+                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
+                      <div>
+                        <h3 className="text-lg font-medium mb-3">Drift Correction</h3>
+                        {!simulationResult ? (
+                          <div className="p-8 text-center">
+                            <p className="text-muted-foreground">Complete simulation to see correction options</p>
+                          </div>
+                        ) : (
+                          <Suspense fallback={<Skeleton className="w-full h-[400px]" />}>
+                            <DriftCorrection result={simulationResult} />
+                          </Suspense>
+                        )}
                       </div>
                     </CarouselItem>
                   </CarouselContent>
                 </Carousel>
                 
-                <h3 className="text-lg font-medium mb-3">Drift Correction Protocols</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-secondary/30 rounded-xl">
-                    <h4 className="font-medium mb-1">Prevention</h4>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      <li>Set up reminders 30 minutes before bedtime</li>
-                      <li>Create a calming bedtime routine</li>
-                      <li>Track sleep quality with wearables</li>
-                    </ul>
-                  </div>
-                  <div className="p-4 bg-secondary/30 rounded-xl">
-                    <h4 className="font-medium mb-1">Recovery</h4>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      <li>Schedule power naps during low-energy periods</li>
-                      <li>Reduce caffeine intake after 2pm</li>
-                      <li>Implement weekend recovery sleep sessions</li>
-                    </ul>
-                  </div>
+                <div className="flex justify-between mt-6">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
+                    disabled={activeStep === 0}
+                    className="flex items-center gap-1"
+                  >
+                    <ArrowLeft size={16} /> Back
+                  </Button>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                  
+                  <Button
+                    variant={activeStep === 2 ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => {
+                      if (activeStep < 2) {
+                        if (activeStep === 0) {
+                          // User clicked Next on first step, prompt to run simulation
+                          toast({
+                            title: "Run Simulation",
+                            description: "Please fill the form and run the simulation first.",
+                          });
+                        } else {
+                          setActiveStep(activeStep + 1);
+                        }
+                      } else {
+                        // Last step, apply to clarity hub
+                        handleApplyToClarityHub();
+                      }
+                    }}
+                    disabled={activeStep === 1 && !simulationResult}
+                    className="flex items-center gap-1"
+                  >
+                    {activeStep === 2 ? "Apply to Clarity Hub" : "Next"} <ArrowRight size={16} />
+                  </Button>
                 </div>
-              </>
+              </div>
             ) : (
               <div className="text-center p-8">
                 <p>Select a scenario to run a simulation</p>
               </div>
             )}
-            
-            <Button 
-              className="w-full mt-6"
-              variant="default"
-              onClick={() => setIsDialogOpen(false)}
-            >
-              Close Simulation
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
