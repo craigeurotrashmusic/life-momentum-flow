@@ -29,7 +29,7 @@ const PillarsSlide = ({ onNext }: SlideProps) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20"
+      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20 pb-24"
     >
       <div className="max-w-3xl mx-auto text-center">
         <h1 className="text-4xl md:text-5xl font-bold mb-10 text-gradient">
@@ -55,7 +55,7 @@ const PillarsSlide = ({ onNext }: SlideProps) => {
           <Button 
             onClick={onNext} 
             size="lg" 
-            className="rounded-full px-8 py-6 text-lg group"
+            className="rounded-full px-8 py-6 text-lg group fixed-mobile-button"
           >
             Next
             <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

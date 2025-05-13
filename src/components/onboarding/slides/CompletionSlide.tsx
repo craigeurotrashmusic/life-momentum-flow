@@ -54,7 +54,7 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20"
+      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20 pb-24"
     >
       <div className="max-w-3xl mx-auto text-center">
         <motion.div
@@ -93,7 +93,7 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
           <Button
             onClick={handleComplete}
             size="lg"
-            className="rounded-full px-8 py-6 text-lg group"
+            className="rounded-full px-8 py-6 text-lg group fixed-mobile-button"
             disabled={isSubmitting}
           >
             {isSubmitting ? "Preparing..." : "Create Account"}
