@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
@@ -7,6 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import WelcomeSlide from "./slides/WelcomeSlide";
 import PillarsSlide from "./slides/PillarsSlide";
 import VisionSlide from "./slides/VisionSlide";
+import EpochSetupSlide from "./slides/EpochSetupSlide";
 import RhythmSlide from "./slides/RhythmSlide";
 import HealthSlide from "./slides/HealthSlide";
 import WealthSlide from "./slides/WealthSlide";
@@ -23,7 +23,7 @@ const OnboardingSlideDeck = () => {
   const isMobile = useIsMobile();
 
   // Slide management
-  const totalSlides = 9;
+  const totalSlides = 10;
   
   const goToNextSlide = () => {
     if (currentSlide < totalSlides - 1) {
@@ -46,10 +46,9 @@ const OnboardingSlideDeck = () => {
   };
 
   const handleCompletion = () => {
-    // This will be called by CompletionSlide, but we're not using it anymore
-    // as the CompletionSlide now handles navigation directly
+    // This will be called by CompletionSlide
     localStorage.setItem('hasCompletedOnboarding', 'true');
-    navigate("/auth");
+    navigate("/auth"); // Or "/dashboard" if auth is handled by dashboard
   };
   
   // Setup swipe handlers
@@ -77,15 +76,15 @@ const OnboardingSlideDeck = () => {
         );
       case 3:
         return (
-          <RhythmSlide 
-            onNext={goToNextSlide} 
-            isSubmitting={isSubmitting} 
-            setIsSubmitting={setIsSubmitting} 
+          <EpochSetupSlide
+            onNext={goToNextSlide}
+            isSubmitting={isSubmitting}
+            setIsSubmitting={setIsSubmitting}
           />
         );
       case 4:
         return (
-          <HealthSlide 
+          <RhythmSlide 
             onNext={goToNextSlide} 
             isSubmitting={isSubmitting} 
             setIsSubmitting={setIsSubmitting} 
@@ -93,7 +92,7 @@ const OnboardingSlideDeck = () => {
         );
       case 5:
         return (
-          <WealthSlide 
+          <HealthSlide 
             onNext={goToNextSlide} 
             isSubmitting={isSubmitting} 
             setIsSubmitting={setIsSubmitting} 
@@ -101,7 +100,7 @@ const OnboardingSlideDeck = () => {
         );
       case 6:
         return (
-          <EmotionSlide 
+          <WealthSlide 
             onNext={goToNextSlide} 
             isSubmitting={isSubmitting} 
             setIsSubmitting={setIsSubmitting} 
@@ -109,13 +108,21 @@ const OnboardingSlideDeck = () => {
         );
       case 7:
         return (
-          <CommunitySlide 
+          <EmotionSlide 
             onNext={goToNextSlide} 
             isSubmitting={isSubmitting} 
             setIsSubmitting={setIsSubmitting} 
           />
         );
       case 8:
+        return (
+          <CommunitySlide 
+            onNext={goToNextSlide} 
+            isSubmitting={isSubmitting} 
+            setIsSubmitting={setIsSubmitting} 
+          />
+        );
+      case 9:
         return (
           <CompletionSlide 
             onComplete={handleCompletion} 
