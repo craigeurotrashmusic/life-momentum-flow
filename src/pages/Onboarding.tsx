@@ -5,19 +5,10 @@ import OnboardingSlideDeck from "@/components/onboarding/OnboardingSlideDeck";
 
 const Onboarding = () => {
   const navigate = useNavigate();
-  const isAuthenticated = localStorage.getItem("isAuthenticated") === "true";
-
-  useEffect(() => {
-    // If user is not authenticated, redirect to auth page
-    if (!isAuthenticated) {
-      navigate("/auth");
-    }
-  }, [isAuthenticated, navigate]);
-
-  if (!isAuthenticated) {
-    return null; // Don't render anything while redirecting
-  }
-
+  
+  // New users don't need to be authenticated to begin onboarding
+  // They'll be prompted to create an account at the end
+  
   return <OnboardingSlideDeck />;
 };
 

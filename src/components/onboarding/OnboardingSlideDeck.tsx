@@ -1,4 +1,3 @@
-
 import { useState, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
@@ -29,12 +28,10 @@ const OnboardingSlideDeck = () => {
   };
 
   const handleCompletion = () => {
-    // Navigate to the dashboard after onboarding completion
-    toast({
-      title: "Welcome to Momentum OS",
-      description: "Your dashboard is ready!",
-    });
-    navigate("/");
+    // This will be called by CompletionSlide, but we're not using it anymore
+    // as the CompletionSlide now handles navigation directly
+    localStorage.setItem('hasCompletedOnboarding', 'true');
+    navigate("/auth");
   };
   
   // Render the current slide

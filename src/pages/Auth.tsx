@@ -1,10 +1,25 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
 import { motion } from 'framer-motion';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isFromOnboarding = localStorage.getItem('hasCompletedOnboarding') === 'true';
+  
+  // Check if user is already authenticated
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding') === 'true';
+    
+    // If authenticated, navigate to home
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [navigate]);
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-background">
@@ -25,7 +40,11 @@ const Auth = () => {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
-        <AuthForm isLoading={isLoading} setIsLoading={setIsLoading} />
+        <AuthForm 
+          isLoading={isLoading} 
+          setIsLoading={setIsLoading} 
+          isFromOnboarding={isFromOnboarding}
+        />
       </motion.div>
     </div>
   );

@@ -9,10 +9,11 @@ import { Loader2 } from 'lucide-react';
 interface AuthFormProps {
   isLoading: boolean;
   setIsLoading: (loading: boolean) => void;
+  isFromOnboarding?: boolean;
 }
 
-const AuthForm = ({ isLoading, setIsLoading }: AuthFormProps) => {
-  const [isLogin, setIsLogin] = useState(true);
+const AuthForm = ({ isLoading, setIsLoading, isFromOnboarding = false }: AuthFormProps) => {
+  const [isLogin, setIsLogin] = useState(!isFromOnboarding); // If from onboarding, default to signup
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { toast } = useToast();
@@ -76,7 +77,12 @@ const AuthForm = ({ isLoading, setIsLoading }: AuthFormProps) => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          {isLogin ? 'Sign in to your account' : 'Start your productivity journey'}
+          {isFromOnboarding && !isLogin 
+            ? 'Complete your account setup to access your dashboard' 
+            : isLogin 
+              ? 'Sign in to your account' 
+              : 'Start your productivity journey'
+          }
         </motion.p>
       </div>
       

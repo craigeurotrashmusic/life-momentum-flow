@@ -37,6 +37,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Root path - entry point for all users */}
             <Route 
               path="/" 
               element={
@@ -47,20 +48,28 @@ const App = () => {
                   : <Navigate to="/auth" replace />
               } 
             />
+            
+            {/* Auth route - handles both login and signup */}
             <Route 
               path="/auth" 
-              element={isAuthenticated ? <Navigate to="/" replace /> : <Auth />} 
+              element={
+                isAuthenticated 
+                  ? <Navigate to="/" replace /> 
+                  : <Auth />
+              } 
             />
+            
+            {/* Onboarding route - for users who are authenticated but haven't completed onboarding */}
             <Route 
               path="/onboarding" 
               element={
-                isAuthenticated 
-                  ? hasCompletedOnboarding 
-                    ? <Navigate to="/" replace /> 
-                    : <Onboarding />
-                  : <Navigate to="/auth" replace />
+                !hasCompletedOnboarding 
+                  ? <Onboarding />
+                  : <Navigate to="/" replace />
               } 
             />
+            
+            {/* Catch all route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

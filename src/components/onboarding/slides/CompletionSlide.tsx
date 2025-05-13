@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
 import { prefetchDashboardData } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
-import { SlideProps } from "./types";
+import { useNavigate } from "react-router-dom";
 
 interface CompletionSlideProps {
   onComplete: () => void;
@@ -14,6 +14,8 @@ interface CompletionSlideProps {
 }
 
 const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: CompletionSlideProps) => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     // Prefetch dashboard data in the background
     const prefetchData = async () => {
@@ -30,9 +32,10 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
   const handleComplete = async () => {
     setIsSubmitting(true);
     try {
-      // Final setup before redirecting to dashboard
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate loading
-      onComplete();
+      localStorage.setItem('hasCompletedOnboarding', 'true');
+      
+      // Redirect to auth page for account creation
+      navigate("/auth");
     } catch (error) {
       toast({
         title: "Error",
@@ -81,7 +84,7 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
         </h1>
 
         <p className="text-xl md:text-2xl mb-12 text-muted-foreground">
-          Thanks! We're populating your dashboard now.
+          Create your account to access your personalized dashboard!
         </p>
 
         <div className="mt-8">
@@ -91,7 +94,7 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
             className="rounded-full px-8 py-6 text-lg group"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Preparing Dashboard..." : "Get Started"}
+            {isSubmitting ? "Preparing..." : "Create Account"}
             <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>
