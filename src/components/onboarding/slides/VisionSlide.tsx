@@ -66,7 +66,7 @@ const VisionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                   <Input
                     id={`value-${index}`}
                     placeholder={`Enter core value ${index + 1}`}
-                    {...register(`values.${index}` as const)}
+                    {...register(index === 0 ? "values.0" : index === 1 ? "values.1" : "values.2")}
                   />
                 </div>
               ))}
@@ -82,7 +82,7 @@ const VisionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                   <Input
                     id={`goal-${index}`}
                     placeholder={`Enter 5-year goal ${index + 1}`}
-                    {...register(`goals.${index}` as const)}
+                    {...register(index === 0 ? "goals.0" : index === 1 ? "goals.1" : "goals.2")}
                   />
                 </div>
               ))}
