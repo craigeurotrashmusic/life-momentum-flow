@@ -1,3 +1,4 @@
+
 # Welcome to your Lovable project
 
 ## Project info
@@ -36,6 +37,21 @@ npm i
 npm run dev
 ```
 
+## Code Quality & Linting
+
+This project uses ESLint and Prettier to ensure code quality and consistent formatting:
+
+```sh
+# Run ESLint to check for issues
+npm run lint
+
+# Run TypeScript type checking
+npm run type-check
+
+# Run both lint and type checking
+npm run validate
+```
+
 **Edit a file directly in GitHub**
 
 - Navigate to the desired file(s).
@@ -59,6 +75,7 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- ESLint & Prettier for code quality
 
 ## How can I deploy this project?
 
