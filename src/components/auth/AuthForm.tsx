@@ -3,43 +3,81 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 
-const AuthForm = () => {
+interface AuthFormProps {
+  isLoading: boolean;
+  setIsLoading: (loading: boolean) => void;
+}
+
+const AuthForm = ({ isLoading, setIsLoading }: AuthFormProps) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Mock authentication for demo
-    if (email && password) {
-      toast({
-        title: isLogin ? "Logged in successfully" : "Account created successfully",
-        description: isLogin ? "Welcome back!" : "Welcome to Momentum OS!",
-      });
-      // Normally we would handle actual auth here
-      localStorage.setItem('isAuthenticated', 'true');
-      window.location.href = '/';
-    } else {
+    if (!email || !password) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
         variant: "destructive",
       });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    // Simulate API request
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      toast({
+        title: isLogin ? "Logged in successfully" : "Account created successfully",
+        description: isLogin ? "Welcome back!" : "Welcome to Momentum OS!",
+      });
+      
+      // Mock authentication
+      localStorage.setItem('isAuthenticated', 'true');
+      window.location.href = '/';
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Authentication failed. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md mx-auto p-6">
+    <motion.div 
+      className="w-full max-w-md mx-auto"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-2">
+        <motion.h1 
+          className="text-3xl font-bold text-foreground mb-2"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
           {isLogin ? 'Welcome back' : 'Create account'}
-        </h1>
-        <p className="text-muted-foreground">
+        </motion.h1>
+        <motion.p 
+          className="text-muted-foreground"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+        >
           {isLogin ? 'Sign in to your account' : 'Start your productivity journey'}
-        </p>
+        </motion.p>
       </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -54,6 +92,7 @@ const AuthForm = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full"
+            disabled={isLoading}
           />
         </div>
         
@@ -68,11 +107,23 @@ const AuthForm = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full"
+            disabled={isLoading}
           />
         </div>
         
-        <Button type="submit" className="w-full">
-          {isLogin ? 'Sign In' : 'Create Account'}
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isLogin ? 'Signing in...' : 'Creating account...'}
+            </>
+          ) : (
+            isLogin ? 'Sign In' : 'Create Account'
+          )}
         </Button>
       </form>
       
@@ -80,11 +131,12 @@ const AuthForm = () => {
         <button 
           onClick={() => setIsLogin(!isLogin)} 
           className="text-accent hover:underline text-sm"
+          disabled={isLoading}
         >
           {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
