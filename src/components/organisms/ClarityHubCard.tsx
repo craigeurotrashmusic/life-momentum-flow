@@ -9,6 +9,20 @@ import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
 
+// Placeholder data for coreValues and longTermGoals
+const coreValues = [
+  { name: "Integrity", score: 85 },
+  { name: "Growth", score: 92 },
+  { name: "Impact", score: 78 },
+  { name: "Balance", score: 60 },
+];
+
+const longTermGoals = [
+  { name: "Master Quantum Computing", target: "Complete PhD", progress: 45 },
+  { name: "Achieve Financial Independence", target: "$5M Net Worth", progress: 60 },
+  { name: "Write a Novel", target: "Publish Sci-Fi Epic", progress: 20 },
+];
+
 const ClarityHubCard: React.FC = () => {
   const { metrics, isLoading, isError, error, refreshMetrics, isRefreshing } = useClarityHub();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
