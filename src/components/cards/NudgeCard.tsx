@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { BrainCircuit, Bell, BellOff, X, Snooze } from 'lucide-react';
+import { BrainCircuit, Bell, BellOff, X, BellMinus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -331,7 +330,7 @@ const NudgeCard = () => {
                       size="sm"
                       onClick={snoozeNudge}
                     >
-                      <Snooze size={16} />
+                      <BellMinus size={16} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
