@@ -17,6 +17,7 @@ export function useIsMobile() {
     
     // Initial setup
     setVhVariable()
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     
     // Debounced resize handler
     let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -31,9 +32,6 @@ export function useIsMobile() {
         setVhVariable()
       }, 100)
     }
-    
-    // Set initial value
-    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
     
     // Add event listeners
     window.addEventListener("resize", handleResize)

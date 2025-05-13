@@ -13,7 +13,7 @@ const WelcomeSlide = ({ onNext }: SlideProps) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col items-center justify-center h-full px-4 py-6 md:px-20 md:py-10"
+      className="flex flex-col items-center justify-center min-h-[80vh] px-4 py-6 md:px-20 md:py-10"
     >
       <div className="max-w-3xl mx-auto text-center">
         <h1 className={`${isMobile ? 'text-3xl' : 'text-4xl md:text-5xl'} font-bold mb-6 text-gradient`}>
@@ -24,11 +24,11 @@ const WelcomeSlide = ({ onNext }: SlideProps) => {
           Your personal ecosystem for Health, Wealth, Creativity & Growth. Let's set you up!
         </p>
         
-        <div className="mt-4 md:mt-8">
+        <div className="mt-4 md:mt-8 pb-16">
           <Button 
             onClick={onNext} 
             size="lg" 
-            className="rounded-full px-8 py-6 text-lg group min-h-[60px] min-w-[200px]"
+            className="rounded-full px-8 py-6 text-lg group min-h-[60px] min-w-[200px] fixed-mobile-button"
           >
             Let's get started
             <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

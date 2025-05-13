@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,11 +14,13 @@ import EmotionSlide from "./slides/EmotionSlide";
 import CommunitySlide from "./slides/CommunitySlide";
 import CompletionSlide from "./slides/CompletionSlide";
 import { useSwipeable } from "react-swipeable";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const OnboardingSlideDeck = () => {
   const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isMobile = useIsMobile();
 
   // Slide management
   const totalSlides = 9;
@@ -26,12 +28,20 @@ const OnboardingSlideDeck = () => {
   const goToNextSlide = () => {
     if (currentSlide < totalSlides - 1) {
       setCurrentSlide((prev) => prev + 1);
+      // Scroll to top when changing slides on mobile
+      if (isMobile) {
+        window.scrollTo(0, 0);
+      }
     }
   };
 
   const goToPrevSlide = () => {
     if (currentSlide > 0) {
       setCurrentSlide((prev) => prev - 1);
+      // Scroll to top when changing slides on mobile
+      if (isMobile) {
+        window.scrollTo(0, 0);
+      }
     }
   };
 
@@ -119,8 +129,8 @@ const OnboardingSlideDeck = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      <div className="flex justify-between p-4">
+    <div className="min-h-screen bg-background">
+      <div className="flex justify-between p-4 sticky top-0 z-10 bg-background/80 backdrop-blur-sm">
         <button 
           onClick={goToPrevSlide}
           disabled={currentSlide === 0}
@@ -155,9 +165,9 @@ const OnboardingSlideDeck = () => {
       
       <div 
         {...swipeHandlers}
-        className="h-[calc(var(--vh,1vh)*100-var(--header-height))] overflow-y-auto snap-y snap-mandatory"
+        className="min-h-[calc(100vh-80px)] md:min-h-[calc(var(--vh,1vh)*100-80px)] overflow-y-auto pb-20"
       >
-        <div className="snap-start h-full">
+        <div className="h-full">
           {renderCurrentSlide()}
         </div>
       </div>
