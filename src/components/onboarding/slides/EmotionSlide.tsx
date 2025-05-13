@@ -76,6 +76,7 @@ const EmotionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => 
                       step={1}
                       defaultValue={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}
+                      className="py-2" // Add some padding for easier thumb interaction
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Stressed</span>
@@ -100,7 +101,7 @@ const EmotionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => 
                   <Textarea
                     id="stressors"
                     placeholder="Share your current challenges..."
-                    className="min-h-[100px]"
+                    className="w-full py-3 px-4 text-base rounded-lg min-h-[120px]"
                     {...field}
                   />
                 )}

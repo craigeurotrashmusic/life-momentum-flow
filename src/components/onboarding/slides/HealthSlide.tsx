@@ -88,7 +88,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6 }}
-      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20"
+      className="flex flex-col items-center justify-center h-full px-6 py-10 md:px-20 pb-24"
     >
       <div className="max-w-3xl mx-auto w-full">
         <h1 className="text-4xl md:text-5xl font-bold mb-10 text-gradient text-center">
@@ -98,7 +98,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           <div className="space-y-6">
             <h2 className="text-xl font-medium">Supplements</h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {supplements.map((supplement) => (
                 <div key={supplement.id} className="flex items-center space-x-2">
                   <Checkbox
@@ -106,7 +106,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                     checked={selectedSupplements.includes(supplement.id)}
                     onCheckedChange={() => toggleSupplement(supplement.id)}
                   />
-                  <Label htmlFor={supplement.id}>{supplement.label}</Label>
+                  <Label htmlFor={supplement.id} className="cursor-pointer text-sm md:text-base">{supplement.label}</Label>
                 </div>
               ))}
             </div>
@@ -114,7 +114,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
 
           <div className="space-y-6">
             <h2 className="text-xl font-medium">Sleep & Exercise</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8">
               <div className="space-y-2">
                 <Label htmlFor="sleep-hours">Average Sleep Hours</Label>
                 <Controller
@@ -130,6 +130,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                       {...field}
                       value={field.value}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      className="w-full py-3 px-4 text-base rounded-lg h-12"
                     />
                   )}
                 />
@@ -144,7 +145,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
-                      <SelectTrigger id="exercise-frequency">
+                      <SelectTrigger id="exercise-frequency" className="w-full py-3 px-4 text-base rounded-lg h-12">
                         <SelectValue placeholder="How often do you exercise?" />
                       </SelectTrigger>
                       <SelectContent>
@@ -165,7 +166,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
             <Button
               type="submit"
               size="lg"
-              className="rounded-full px-8 py-6 text-lg group"
+              className="rounded-full px-8 py-6 text-lg group fixed-mobile-button"
               disabled={isSubmitting}
             >
               {isSubmitting ? "Saving..." : "Next"}
