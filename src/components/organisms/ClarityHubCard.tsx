@@ -1,12 +1,11 @@
-
 import React from 'react';
-import { LifeCard } from '@/components/cards/LifeCard'; // Assuming LifeCard can be reused or create a similar base
+import LifeCard from '@/components/cards/LifeCard'; // Changed to default import
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClarityHub } from '@/contexts/ClarityHubContext';
 import { ClarityPillar } from '@/types/clarity';
 import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info } from 'lucide-react';
-import { Progress } from '@/components/ui/progress'; // For a simple gauge like display
+import { Progress } from '@/components/ui/progress';
 
 const ClarityHubCard: React.FC = () => {
   const { metrics, isLoading, isError, error, refreshMetrics, isRefreshing } = useClarityHub();
@@ -68,7 +67,7 @@ const ClarityHubCard: React.FC = () => {
     <LifeCard 
       title="Clarity Hub" 
       icon={<Brain className="text-purple-400" />} 
-      color="bg-gradient-to-br from-purple-900/50 to-indigo-900/50" // Adjusted color
+      color="bg-gradient-to-br from-purple-900/50 to-indigo-900/50"
       expandable={true}
     >
       <div className="p-1 sm:p-2 md:p-4">
@@ -85,7 +84,6 @@ const ClarityHubCard: React.FC = () => {
             {/* Overall Clarity Score Section */}
             <div className="text-center mb-6">
               <div className="relative inline-block">
-                 {/* Simple text display for now, can be replaced with a radial chart */}
                 <div className="text-5xl font-bold" style={{ color: getPillarScoreColor(overallScore).replace('text-', '').replace('-400', '') }}>{overallScore}
                   <span className="text-2xl text-muted-foreground">%</span>
                 </div>
@@ -94,7 +92,12 @@ const ClarityHubCard: React.FC = () => {
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Overall Clarity Score</p>
-              <Progress value={overallScore} className={`w-3/4 mx-auto mt-2 h-2 ${getOverallScoreColor(overallScore)}`} indicatorClassName={getOverallScoreColor(overallScore)} />
+              {/* Updated Progress component usage */}
+              <Progress 
+                value={overallScore} 
+                className="w-3/4 mx-auto mt-2 h-2"  // Root/track styling (no dynamic background color here)
+                indicatorClassName={getOverallScoreColor(overallScore)} // Indicator/fill styling
+              />
             </div>
 
             {/* Pillars Section */}
