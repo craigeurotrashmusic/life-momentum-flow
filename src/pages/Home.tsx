@@ -7,6 +7,7 @@ import HabitCard from '@/components/cards/HabitCard';
 import ClarityCard from '@/components/cards/ClarityCard';
 import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
+import SimulationCard from '@/components/cards/SimulationCard';
 import { useToast } from '@/components/ui/use-toast';
 
 const Home = () => {
@@ -57,6 +58,7 @@ const Home = () => {
           <FocusCard />
           <HabitCard />
           <ClarityCard />
+          <SimulationCard />
           <SupplementCard />
           <ReviewCard />
         </div>
