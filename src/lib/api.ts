@@ -1,5 +1,5 @@
-
 import { toast } from "@/hooks/use-toast";
+import { ClarityMetrics } from '@/types/clarity';
 
 // Simulation types
 export type ScenarioType = "sleep" | "finance" | "workout" | "diet";
@@ -218,6 +218,74 @@ export const submitCommunity = async (data: CommunityData): Promise<void> => {
     console.error("Error submitting community data:", error);
     throw error;
   }
+};
+
+// Clarity Hub types
+let mockClarityMetricsData: ClarityMetrics = {
+  healthScore: 75,
+  wealthScore: 82,
+  simulationImpact: {
+    healthDelta: -2,
+    wealthDelta: 1,
+    psychologyDelta: -5,
+  },
+  emotionalDrift: 15, // Lower is better, represents variance
+  flowIndex: 60,
+  overallClarityScore: 0, // Will be calculated
+  timestamp: new Date().toISOString(),
+  trend: 'stable',
+};
+
+const calculateOverallClarity = (metrics: ClarityMetrics): number => {
+  // Example calculation: weighted average. Adjust weights as needed.
+  const healthWeight = 0.3;
+  const wealthWeight = 0.3;
+  const emotionWeight = 0.2; // Inverse of drift: (100 - drift)
+  const flowWeight = 0.2;
+
+  const overall = 
+    (metrics.healthScore * healthWeight) +
+    (metrics.wealthScore * wealthWeight) +
+    ((100 - Math.min(metrics.emotionalDrift, 100)) * emotionWeight) + // Cap drift at 100 for calc
+    (metrics.flowIndex * flowWeight);
+  return Math.max(0, Math.min(100, Math.round(overall))); // Ensure score is 0-100
+};
+
+mockClarityMetricsData.overallClarityScore = calculateOverallClarity(mockClarityMetricsData);
+
+export const fetchClarityMetrics = async (): Promise<ClarityMetrics> => {
+  console.log("Fetching Clarity Metrics...");
+  await new Promise(resolve => setTimeout(resolve, 800)); // Simulate API delay
+  // In a real app, this would fetch from a backend.
+  // For now, return and slightly randomize mock data to show changes
+  mockClarityMetricsData = {
+    ...mockClarityMetricsData,
+    healthScore: Math.min(100, mockClarityMetricsData.healthScore + Math.floor(Math.random() * 5) - 2),
+    wealthScore: Math.min(100, mockClarityMetricsData.wealthScore + Math.floor(Math.random() * 5) - 2),
+    emotionalDrift: Math.max(0, mockClarityMetricsData.emotionalDrift + Math.floor(Math.random() * 10) - 5),
+    flowIndex: Math.min(100, mockClarityMetricsData.flowIndex + Math.floor(Math.random() * 10) - 5),
+    timestamp: new Date().toISOString(),
+  };
+  const newOverallScore = calculateOverallClarity(mockClarityMetricsData);
+  mockClarityMetricsData.trend = newOverallScore > mockClarityMetricsData.overallClarityScore ? 'up' : newOverallScore < mockClarityMetricsData.overallClarityScore ? 'down' : 'stable';
+  mockClarityMetricsData.overallClarityScore = newOverallScore;
+  
+  console.log("Fetched Clarity Metrics:", mockClarityMetricsData);
+  return { ...mockClarityMetricsData };
+};
+
+export const refreshClarityMetrics = async (): Promise<ClarityMetrics> => {
+  console.log("Refreshing Clarity Metrics (triggering recalculation)...");
+  await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate recalculation delay
+  // This would typically involve calls to other services/backend logic
+  // For now, it just re-runs the fetch logic to get new "randomized" data
+  const refreshedMetrics = await fetchClarityMetrics(); 
+  toast({
+    title: "Clarity Hub Refreshed",
+    description: "Your clarity metrics have been updated.",
+  });
+  console.log("Refreshed Clarity Metrics:", refreshedMetrics);
+  return refreshedMetrics;
 };
 
 // Prefetch dashboard data

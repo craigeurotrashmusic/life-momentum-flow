@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +8,7 @@ import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
+import { ClarityHubProvider } from './contexts/ClarityHubContext';
 
 const queryClient = new QueryClient();
 
@@ -38,49 +38,51 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          {/* Added padding-top to account for fixed header */}
-          <div className="pt-[var(--header-height)] min-h-screen">
-            <Routes>
-              {/* Root path - entry point for all users */}
-              <Route 
-                path="/" 
-                element={
-                  isAuthenticated 
-                    ? <Home /> 
-                    : hasCompletedOnboarding 
-                      ? <Navigate to="/auth" replace /> 
-                      : <Navigate to="/onboarding" replace />
-                } 
-              />
-              
-              {/* Auth route - handles both login and signup */}
-              <Route 
-                path="/auth" 
-                element={
-                  isAuthenticated 
-                    ? <Navigate to="/" replace /> 
-                    : <Auth />
-                } 
-              />
-              
-              {/* Onboarding route - for new users who haven't completed onboarding */}
-              <Route 
-                path="/onboarding" 
-                element={
-                  hasCompletedOnboarding 
-                    ? <Navigate to="/auth" replace />
-                    : <Onboarding />
-                } 
-              />
-              
-              {/* Catch all route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
-        </BrowserRouter>
+        <ClarityHubProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            {/* Added padding-top to account for fixed header */}
+            <div className="pt-[var(--header-height)] min-h-screen">
+              <Routes>
+                {/* Root path - entry point for all users */}
+                <Route 
+                  path="/" 
+                  element={
+                    isAuthenticated 
+                      ? <Home /> 
+                      : hasCompletedOnboarding 
+                        ? <Navigate to="/auth" replace /> 
+                        : <Navigate to="/onboarding" replace />
+                  } 
+                />
+                
+                {/* Auth route - handles both login and signup */}
+                <Route 
+                  path="/auth" 
+                  element={
+                    isAuthenticated 
+                      ? <Navigate to="/" replace /> 
+                      : <Auth />
+                  } 
+                />
+                
+                {/* Onboarding route - for new users who haven't completed onboarding */}
+                <Route 
+                  path="/onboarding" 
+                  element={
+                    hasCompletedOnboarding 
+                      ? <Navigate to="/auth" replace />
+                      : <Onboarding />
+                  } 
+                />
+                
+                {/* Catch all route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </BrowserRouter>
+        </ClarityHubProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

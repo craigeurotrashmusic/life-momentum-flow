@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import EpochCard from '@/components/cards/EpochCard';
@@ -9,6 +8,7 @@ import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
 import SimulationCard from '@/components/cards/SimulationCard';
 import { useToast } from '@/components/ui/use-toast';
+import ClarityHubCard from '@/components/organisms/ClarityHubCard';
 
 // Lazy load the Nudge Card for better performance
 const NudgeCard = lazy(() => import('@/components/cards/NudgeCard'));
@@ -57,6 +57,7 @@ const Home = () => {
       
       <main ref={scrollContainerRef} className="pt-16 container mx-auto h-screen">
         <div className="card-stack no-scrollbar pb-20">
+          <ClarityHubCard />
           <EpochCard />
           <FocusCard />
           <HabitCard />
