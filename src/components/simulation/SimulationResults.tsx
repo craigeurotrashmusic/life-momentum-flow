@@ -1,10 +1,9 @@
-
 import React, { Suspense } from 'react';
 import { SimulationResult } from '@/lib/api';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { lineChart, lineChartDefaultProps } from 'lucide-react';
+import { LineChart as LineChartIcon } from 'lucide-react';
 import { 
   LineChart, 
   Line, 
