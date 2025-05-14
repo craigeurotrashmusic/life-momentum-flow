@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { useNudge } from './NudgeContext';
 import { getEmotionalStateClass } from './utils';
 import { Activity, BarChart3, Brain } from 'lucide-react';
 import { EmotionalInsight } from './types';
 import EmotionalInsightCard from './EmotionalInsightCard';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile'; // Ensure correct import
 import { Button } from '@/components/ui/button';
 
 // Mock emotional insight data

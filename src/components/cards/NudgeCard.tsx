@@ -1,8 +1,6 @@
-
 import React, { lazy, Suspense } from 'react';
 import { BrainCircuit, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-// import { toast } from '@/components/ui/sonner'; // Not used here directly
 import LifeCard from './LifeCard';
 import { NudgeProvider, useNudge } from '../nudge/NudgeContext';
 import EmotionalHeatmap from '../nudge/EmotionalHeatmap';
@@ -78,4 +76,3 @@ const NudgeCard = () => {
 };
 
 export default NudgeCard;
-

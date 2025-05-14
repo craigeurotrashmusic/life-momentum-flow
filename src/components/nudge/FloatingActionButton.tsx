@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronUp, Bell, Settings, Plus, X, Brain } from 'lucide-react';
