@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const ThemeToggle = () => {
   // Default to dark theme based on typical preference or if nothing is set
@@ -20,8 +21,6 @@ const ThemeToggle = () => {
       document.documentElement.setAttribute('data-theme', 'dark');
     } else {
       document.documentElement.removeAttribute('data-theme');
-      // Or document.documentElement.setAttribute('data-theme', 'light'); if your CSS requires it for :root styles.
-      // Given the stylesheet uses :root for light and [data-theme="dark"] for dark, removing the attribute is correct.
     }
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
   }, [isDark]);
@@ -31,15 +30,16 @@ const ThemeToggle = () => {
   };
 
   return (
-    <button
+    <Button
       onClick={toggleTheme}
-      className="p-2 rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
+      variant="ghost"
+      size="icon"
+      className="rounded-full bg-secondary/50 text-foreground hover:bg-secondary transition-colors"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {isDark ? <Sun size={18} /> : <Moon size={18} />}
-    </button>
+    </Button>
   );
 };
 
 export default ThemeToggle;
-

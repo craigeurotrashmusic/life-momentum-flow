@@ -1,10 +1,9 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
-  /* Momentum OS – Style Sheet (v1.1) */
+  /* Momentum OS – Style Sheet (v1.2) */
   /* 1 · Core Palette – Light Mode (Defaults) */
   :root {
     --brand-sky:      #A5C8E4;
@@ -14,6 +13,8 @@
     --brand-teal-700: #365757;
     --accent-peach:   #F4A261;
     --accent-gold:    #DCBF73;
+    --accent-primary: #A260FF;  /* New purple accent */
+    --accent-secondary: #DCBF73; /* Gold highlights */
     --grey-100:       #F7F7F7;
     --grey-600:       #6E7B7B;
     --success:        #98D7AF;
@@ -37,7 +38,7 @@
     --popover: var(--brand-mint);
     --popover-foreground: var(--brand-teal-900);
     
-    --primary: var(--accent-peach); /* primary color is accent-peach */
+    --primary: var(--accent-primary); /* primary color is now accent-primary (purple) */
     --primary-foreground: #FFFFFF; /* Text on primary buttons */
     
     --secondary: var(--brand-ivory); /* secondary bg, e.g. for secondary button hover */
@@ -46,7 +47,7 @@
     --muted: var(--grey-100);
     --muted-foreground: var(--grey-600);
     
-    --accent: var(--accent-gold); /* accent color is accent-gold */
+    --accent: var(--accent-secondary); /* accent color is accent-secondary (gold) */
     --accent-foreground: var(--brand-teal-900);
     
     --destructive: var(--error);
@@ -55,7 +56,7 @@
     --border: var(--grey-100); /* default border color */
     --input: var(--brand-ivory); /* input background */
     --input-foreground: var(--brand-teal-900); /* input text color */
-    --ring: var(--accent-peach); /* focus ring */
+    --ring: var(--accent-primary); /* focus ring now uses accent-primary */
     
     --radius: 1rem; /* Corresponds to rounded-2xl */
 
@@ -65,16 +66,17 @@
   }
 
   /* 2 · Dark Mode Derivatives */
-  html[data-theme="dark"] {
-    --brand-sky:      #305A77;
-    --brand-mint:     #2B5E45;
-    --brand-ivory:    #493F30;
-    --brand-teal-900: #E8F1F4; /* Text color on dark bg */
-    --brand-teal-700: #B0BEC5; /* Secondary text on dark bg */
-    --accent-peach:   #D68950;
-    --accent-gold:    #A68E4A;
-    --grey-100:       #1F2626; /* Darker grey for borders/muted bg */
-    --grey-600:       #9EAEAE; /* Lighter grey for captions on dark bg */
+  [data-theme="dark"] {
+    /* Dark Mode Color Overrides */
+    --brand-sky:      #1E1E2A;    /* page background */
+    --brand-mint:     #2A2A3A;    /* card & modal surfaces */
+    --brand-ivory:    #393944;    /* Darker ivory for dark mode */
+    --brand-teal-900: #E0E0EB;    /* primary headings/text */
+    --brand-teal-700: #C0C0D0;    /* secondary text/icons */
+    --accent-primary: #A260FF;    /* purple accent */
+    --accent-secondary: #DCBF73;  /* gold highlights */
+    --grey-100:       #2A2A36;    /* Darker grey for borders/muted bg */
+    --grey-600:       #9E9EAE;    /* Lighter grey for captions on dark bg */
     --success:        #6CA887;
     --warning:        #A88651;
     --error:          #CC4F4F;
@@ -90,7 +92,7 @@
     --popover: var(--brand-mint);
     --popover-foreground: var(--brand-teal-900);
     
-    --primary: var(--accent-peach);
+    --primary: var(--accent-primary);
     --primary-foreground: #FFFFFF; 
     
     --secondary: var(--brand-ivory);
@@ -99,16 +101,16 @@
     --muted: var(--grey-100);
     --muted-foreground: var(--grey-600);
     
-    --accent: var(--accent-gold);
+    --accent: var(--accent-secondary);
     --accent-foreground: var(--brand-teal-900);
     
     --destructive: var(--error);
     --destructive-foreground: #FFFFFF;
     
-    --border: var(--grey-600); /* Darker border */
+    --border: var(--grey-100); /* Darker border */
     --input: var(--brand-ivory); 
     --input-foreground: var(--brand-teal-900);
-    --ring: var(--accent-peach);
+    --ring: var(--accent-primary);
   }
 
   /* 3 · Application Tokens & Usage - Base Styles */
@@ -134,12 +136,12 @@
   }
 
   a, .link-text { /* .link-text for non-<a> elements styled as links */
-    color: var(--brand-teal-900);
+    color: var(--accent-primary); /* Updated to use accent-primary */
     text-decoration: underline;
   }
   
   :focus { /* Global focus style */
-    outline: 3px solid var(--accent-peach);
+    outline: 3px solid var(--accent-primary); /* Updated to use accent-primary */
     outline-offset: 2px; /* Optional: adds some space */
   }
 
@@ -181,19 +183,20 @@
     color: var(--grey-600); 
     font-size: var(--font-size-caption); 
   }
+  
   .icon-outline { stroke: var(--brand-teal-700); }
-  .icon-filled  { fill:   var(--accent-peach); }
+  .icon-filled  { fill:   var(--accent-primary); } /* Updated to use accent-primary */
 
   .btn-primary {
-    background-color: var(--accent-peach);
+    background-color: var(--accent-primary); /* Updated to use accent-primary */
     color: #fff;
     border-radius: 1rem; /* rounded-2xl */
     padding: 0.75rem 1.5rem;
-    font-weight: 500; /* Added for better appearance */
+    font-weight: 500;
     transition: background-color 0.2s;
   }
   .btn-primary:hover {
-    background-color: color-mix(in srgb, var(--accent-peach) 90%, black);
+    background-color: color-mix(in srgb, var(--accent-primary) 90%, black); /* Updated to use accent-primary */
   }
 
   .btn-secondary {
@@ -202,16 +205,15 @@
     color: var(--brand-teal-700);
     border-radius: 1rem; /* rounded-2xl */
     padding: calc(0.75rem - 2px) calc(1.5rem - 2px); /* Adjust padding for border */
-    font-weight: 500; /* Added for better appearance */
+    font-weight: 500;
     transition: background-color 0.2s, color 0.2s;
   }
   .btn-secondary:hover { 
     background-color: var(--brand-ivory); 
-    /* color: var(--brand-teal-900); /* Optional: darken text on hover */
   }
 
-  .toggle-track-active, .slider-track-active { background-color: var(--brand-mint); }
-  .toggle-thumb, .slider-thumb { background-color: var(--accent-peach); }
+  .toggle-track-active, .slider-track-active { background-color: var(--accent-primary); } /* Updated to use accent-primary */
+  .toggle-thumb, .slider-thumb { background-color: var(--brand-teal-900); }
 
   .alert-success { background-color: rgba(152,215,175,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success); }
   .alert-warning { background-color: rgba(244,201,122,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--warning); }
@@ -220,9 +222,9 @@
 
   .chart-palette-1 { fill: var(--brand-mint); }
   .chart-palette-2 { fill: var(--brand-sky); }
-  .chart-palette-3 { fill: var(--accent-peach); }
-  .chart-palette-4 { fill: var(--accent-gold); }
-  .progress-ring-complete   { stroke: var(--accent-peach); }
+  .chart-palette-3 { fill: var(--accent-primary); } /* Updated to use accent-primary */
+  .chart-palette-4 { fill: var(--accent-secondary); }
+  .progress-ring-complete   { stroke: var(--accent-primary); } /* Updated to use accent-primary */
   .progress-ring-remaining  { stroke: var(--grey-100); }
 }
 
@@ -260,8 +262,9 @@
   }
 }
 
-/* Keep other existing styles like .card-stack etc., evaluate their compatibility later */
-/* ... existing .card-stack, .carousel, .animate-float, etc. ... */
+/* Keep other existing styles like .card-stack etc. */
+// ... keep existing code (card-stack, carousel, animation styles, etc.)
+
 .card-stack {
   width: 100%;
   max-width: 100%;
@@ -315,4 +318,3 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 3s ease-in-out infinite;
 }
-

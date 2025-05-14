@@ -30,6 +30,8 @@ export default {
           'teal-700': 'hsl(var(--brand-teal-700))',
         },
         accentColor: { // Renamed to avoid conflict with Tailwind's accent
+          primary: 'hsl(var(--accent-primary))', // New purple accent
+          secondary: 'hsl(var(--accent-secondary))', // Gold highlight
           peach: 'hsl(var(--accent-peach))',
           gold: 'hsl(var(--accent-gold))',
         },
@@ -46,11 +48,11 @@ export default {
         chart: {
           'palette-1': 'hsl(var(--brand-mint))',
           'palette-2': 'hsl(var(--brand-sky))',
-          'palette-3': 'hsl(var(--accent-peach))',
-          'palette-4': 'hsl(var(--accent-gold))',
+          'palette-3': 'hsl(var(--accent-primary))', // Now uses accent-primary
+          'palette-4': 'hsl(var(--accent-secondary))', // Now uses accent-secondary
         },
         progressRing: {
-          complete: 'hsl(var(--accent-peach))',
+          complete: 'hsl(var(--accent-primary))', // Now uses accent-primary
           remaining: 'hsl(var(--grey-100))',
         },
         
@@ -61,7 +63,7 @@ export default {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
+          DEFAULT: 'hsl(var(--primary))', // Maps to accent-primary
           foreground: 'hsl(var(--primary-foreground))'
         },
         secondary: {
@@ -76,7 +78,7 @@ export default {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))'
         },
-        accent: { // Shadcn accent, maps to accentColor.gold
+        accent: { // Shadcn accent, maps to accentColor.secondary (gold)
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))'
         },
@@ -146,4 +148,3 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
-
