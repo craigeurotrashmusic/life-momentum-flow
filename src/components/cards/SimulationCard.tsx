@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useCallback } from 'react';
 import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft, BarChart3 } from 'lucide-react';
-import EmblaOptionsType from 'embla-carousel-react'; // Changed import
+import type { EmblaOptionsType } from 'embla-carousel-react'; // Fix import to use type
 import LifeCard from './LifeCard';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,7 +22,7 @@ import {
   ScenarioType 
 } from '@/lib/api/simulation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Ensure this path is correct and useAuth is exported
+import { useAuth } from '@/hooks/useAuth'; // Use the newly created hook
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 // Lazy load heavy components (DriftCorrection might be less relevant if not directly tied to simulation output display)
@@ -184,7 +184,7 @@ const SimulationCard = () => {
     return data;
   };
   
-  const carouselOptions: EmblaOptionsType = { // Use EmblaOptionsType
+  const carouselOptions: EmblaOptionsType = { // Fix type usage
     align: "start",
   };
 
