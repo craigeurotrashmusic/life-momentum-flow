@@ -1,9 +1,11 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, lazy } from 'react';
 import { SimulationResult } from '@/lib/api/simulation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";
-import { LineChart as LineChartIcon } from 'lucide-react';
+// import { LineChart as LineChartIcon } from 'lucide-react'; // This seems unused, removing for now. If needed, re-add.
+/*
+// Original Recharts imports:
 import { 
   LineChart, 
   Line, 
@@ -11,9 +13,19 @@ import {
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  Legend,
-  ResponsiveContainer 
+  Legend, // Legend is not used in the current charts
+  ResponsiveContainer // ResponsiveContainer is used by ChartContainer, not directly here
 } from 'recharts';
+*/
+
+// Lazy load Recharts components
+const RechartsLineChart = lazy(() => import('recharts').then(module => ({ default: module.LineChart })));
+const RechartsLine = lazy(() => import('recharts').then(module => ({ default: module.Line })));
+const RechartsXAxis = lazy(() => import('recharts').then(module => ({ default: module.XAxis })));
+const RechartsYAxis = lazy(() => import('recharts').then(module => ({ default: module.YAxis })));
+const RechartsCartesianGrid = lazy(() => import('recharts').then(module => ({ default: module.CartesianGrid })));
+const RechartsTooltip = lazy(() => import('recharts').then(module => ({ default: module.Tooltip })));
+// ResponsiveContainer is typically used to wrap charts; ChartContainer already handles this.
 
 interface SimulationResultsProps {
   result: SimulationResult;
@@ -58,9 +70,12 @@ export const SimulationResults = ({ result }: SimulationResultsProps) => {
     return 'bg-red-500/20 text-red-500';
   };
 
+  const ChartSkeleton = () => <Skeleton className="w-full h-full" />;
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Health Impact Chart */}
         <div className="bg-secondary/20 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-medium">Health Impact</h3>
@@ -69,33 +84,31 @@ export const SimulationResults = ({ result }: SimulationResultsProps) => {
             </Badge>
           </div>
           <div className="h-[150px] mt-4">
-            <Suspense fallback={<Skeleton className="w-full h-full" />}>
-              <ChartContainer
-                config={{
-                  value: { color: "#f87171" }
-                }}
-                className="h-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={healthData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#f87171" 
-                      strokeWidth={2}
-                      dot={{ r: 3 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </Suspense>
+            <ChartContainer
+              config={{ value: { color: "#f87171" } }}
+              className="h-full"
+            >
+              {/* Suspense for lazy-loaded Recharts components */}
+              <Suspense fallback={<ChartSkeleton />}>
+                <RechartsLineChart data={healthData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                  <RechartsCartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <RechartsXAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <RechartsYAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
+                  <RechartsTooltip content={<ChartTooltipContent />} />
+                  <RechartsLine 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#f87171" 
+                    strokeWidth={2}
+                    dot={{ r: 3 }} 
+                  />
+                </RechartsLineChart>
+              </Suspense>
+            </ChartContainer>
           </div>
         </div>
         
+        {/* Wealth Impact Chart */}
         <div className="bg-secondary/20 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-medium">Wealth Impact</h3>
@@ -104,33 +117,30 @@ export const SimulationResults = ({ result }: SimulationResultsProps) => {
             </Badge>
           </div>
           <div className="h-[150px] mt-4">
-            <Suspense fallback={<Skeleton className="w-full h-full" />}>
-              <ChartContainer
-                config={{
-                  value: { color: "#60a5fa" }
-                }}
-                className="h-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={wealthData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#60a5fa" 
-                      strokeWidth={2}
-                      dot={{ r: 3 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </Suspense>
+            <ChartContainer
+              config={{ value: { color: "#60a5fa" } }}
+              className="h-full"
+            >
+              <Suspense fallback={<ChartSkeleton />}>
+                <RechartsLineChart data={wealthData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                  <RechartsCartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <RechartsXAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <RechartsYAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
+                  <RechartsTooltip content={<ChartTooltipContent />} />
+                  <RechartsLine 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#60a5fa" 
+                    strokeWidth={2}
+                    dot={{ r: 3 }} 
+                  />
+                </RechartsLineChart>
+              </Suspense>
+            </ChartContainer>
           </div>
         </div>
         
+        {/* Psychology Impact Chart */}
         <div className="bg-secondary/20 rounded-xl p-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="font-medium">Psychology Impact</h3>
@@ -139,30 +149,26 @@ export const SimulationResults = ({ result }: SimulationResultsProps) => {
             </Badge>
           </div>
           <div className="h-[150px] mt-4">
-            <Suspense fallback={<Skeleton className="w-full h-full" />}>
-              <ChartContainer
-                config={{
-                  value: { color: "#a78bfa" }
-                }}
-                className="h-full"
-              >
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={psychologyData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#a78bfa" 
-                      strokeWidth={2}
-                      dot={{ r: 3 }} 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </ChartContainer>
-            </Suspense>
+            <ChartContainer
+              config={{ value: { color: "#a78bfa" } }}
+              className="h-full"
+            >
+              <Suspense fallback={<ChartSkeleton />}>
+                <RechartsLineChart data={psychologyData} margin={{ top: 5, right: 5, bottom: 5, left: 0 }}>
+                  <RechartsCartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <RechartsXAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <RechartsYAxis domain={[0, 100]} tick={{ fontSize: 10 }} width={25} />
+                  <RechartsTooltip content={<ChartTooltipContent />} />
+                  <RechartsLine 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="#a78bfa" 
+                    strokeWidth={2}
+                    dot={{ r: 3 }} 
+                  />
+                </RechartsLineChart>
+              </Suspense>
+            </ChartContainer>
           </div>
         </div>
       </div>
