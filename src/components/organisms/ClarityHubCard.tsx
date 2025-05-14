@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import LifeCard from '@/components/cards/LifeCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info, ArrowRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { fetchClarityMetrics, refreshClarityMetrics, subscribeToClarityMetricsChanges } from '@/lib/api/clarity'; // Corrected API imports
+import type { ClarityMetrics, ClarityPillar } from '@/types/clarity'; // Corrected type imports
+import { useAuth } from '@/hooks/useAuth'; // Corrected import path
 
 // Placeholder data for coreValues and longTermGoals
 const coreValues = [
@@ -22,6 +25,9 @@ const longTermGoals = [
 ];
 
 const ClarityHubCard: React.FC = () => {
+  const { user } = useAuth();
+  const userId = user?.id;
+
   const [metrics, setMetrics] = useState<ClarityMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -29,10 +35,11 @@ const ClarityHubCard: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  // TODO: Replace 'mock_user_id' with actual authenticated user ID
-  const userId = 'mock_user_id';
-
   const loadMetrics = async () => {
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setIsError(false);
     setError(null);
@@ -48,12 +55,13 @@ const ClarityHubCard: React.FC = () => {
     }
   };
   
-  const refreshMetrics = async () => {
+  const handleRefreshMetrics = async () => {
+    if (!userId) return;
     setIsRefreshing(true);
     setIsError(false);
     setError(null);
     try {
-      const data = await apiRefreshClarityMetrics(userId); // use the aliased import
+      const data = await refreshClarityMetrics(userId); // Using imported function
       setMetrics(data);
     } catch (e: any) {
       setIsError(true);
@@ -65,27 +73,41 @@ const ClarityHubCard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadMetrics();
-
-    const subscription = subscribeToClarityMetricsChanges(userId, (payload) => {
-      console.log('Clarity metrics change received:', payload);
-      // Re-fetch or update metrics based on payload
-      loadMetrics(); // Simple re-fetch for now
-    });
-    
-    return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      }
-    };
+    if (userId) {
+      loadMetrics();
+      const subscription = subscribeToClarityMetricsChanges(userId, (payload: any) => { // payload type can be more specific
+        console.log('Clarity metrics change received:', payload);
+        loadMetrics(); 
+      });
+      
+      return () => {
+        // Assuming subscribeToClarityMetricsChanges returns an object with an unsubscribe method
+        if (subscription && typeof subscription.unsubscribe === 'function') {
+          subscription.unsubscribe();
+        }
+      };
+    } else {
+      setMetrics(null);
+      setIsLoading(false);
+    }
   }, [userId]);
+
+  if (!userId && !isLoading) {
+    return (
+      <LifeCard title="Clarity Hub" icon={<Brain />} color="bg-gradient-to-br from-purple-900/50 to-indigo-900/50">
+        <div className="p-4 text-center">
+          <p className="text-muted-foreground">Please log in to view your Clarity Hub.</p>
+        </div>
+      </LifeCard>
+    );
+  }
 
   if (isError && !metrics) { // Show error only if there are no metrics to display
     return (
       <LifeCard title="Clarity Hub" icon={<Brain />} color="bg-gradient-to-br from-gray-700 to-gray-800">
         <div className="text-center p-4">
           <p className="text-destructive-foreground">Error loading Clarity Metrics: {error?.message}</p>
-          <Button onClick={refreshMetrics} className="mt-4" disabled={isRefreshing}>
+          <Button onClick={handleRefreshMetrics} className="mt-4" disabled={isRefreshing}>
             {isRefreshing ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
             Try Again
           </Button>
@@ -102,7 +124,7 @@ const ClarityHubCard: React.FC = () => {
     { name: 'Wealth', score: metrics.wealthScore, icon: DollarSign, trend: metrics.wealthScore > 70 ? 'up' : metrics.wealthScore < 50 ? 'down' : 'stable', unit: '%' },
     { name: 'Emotion', score: 100 - metrics.emotionalDrift, icon: Activity, trend: metrics.emotionalDrift < 20 ? 'up' : metrics.emotionalDrift > 40 ? 'down' : 'stable', unit: '%' },
     { name: 'Flow', score: metrics.flowIndex, icon: Zap, trend: metrics.flowIndex > 70 ? 'up' : metrics.flowIndex < 50 ? 'down' : 'stable', unit: '%' },
-    { name: 'Sim Impact', score: Math.round((metrics.simulationImpact.healthDelta + metrics.simulationImpact.wealthDelta + metrics.simulationImpact.psychologyDelta)/3), icon: Brain, trend: 'stable', unit: 'pts' },
+    { name: 'Sim Impact', score: Math.round(((metrics.simulationImpact?.healthDelta || 0) + (metrics.simulationImpact?.wealthDelta || 0) + (metrics.simulationImpact?.psychologyDelta || 0))/3), icon: Brain, trend: 'stable', unit: 'pts' },
   ] : [];
 
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
@@ -198,7 +220,7 @@ const ClarityHubCard: React.FC = () => {
             )}
             
             <div className="mt-6 flex justify-between items-center">
-                <Button variant="ghost" size="sm" onClick={refreshMetrics} disabled={isRefreshing || isLoading}>
+                <Button variant="ghost" size="sm" onClick={handleRefreshMetrics} disabled={isRefreshing || isLoading}>
                     <RefreshCw className={`mr-2 h-4 w-4 ${(isRefreshing || isLoading) ? 'animate-spin' : ''}`} />
                     {(isRefreshing || isLoading) ? 'Refreshing...' : 'Refresh Now'}
                 </Button>
@@ -238,7 +260,7 @@ const ClarityHubCard: React.FC = () => {
             </div>
             
             <h3 className="text-lg font-medium my-4 text-foreground/90">Long-term Goals</h3>
-            <Carousel className="w-full">
+            <Carousel className="w-full" opts={{ loop: longTermGoals.length > (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 2) }}>
               <CarouselContent>
                 {longTermGoals.map((goal) => (
                   <CarouselItem key={goal.name} className="md:basis-1/2 lg:basis-1/3">
@@ -258,6 +280,8 @@ const ClarityHubCard: React.FC = () => {
                   </CarouselItem>
                 ))}
               </CarouselContent>
+              <CarouselPrevious />
+              <CarouselNext />
             </Carousel>
             
             <h3 className="text-lg font-medium my-4 text-foreground/90">Connected Data Insights</h3>

@@ -1,4 +1,3 @@
-
 import { supabase } from '../supabaseClient';
 import { toast } from '@/hooks/use-toast';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -22,6 +21,23 @@ export interface CreateSimulationParams {
   scenario_type: ScenarioType;
   parameters: Record<string, any>;
   // user_id will be handled by RLS or passed explicitly if needed from a secure context
+}
+
+// This is the older specific type, ensure it's distinct or reconciled with Simulation
+// It's used by use-simulation-socket.ts and DriftCorrection.tsx
+export interface SimulationResult {
+  id: string;
+  user_id?: string; 
+  simulation_params_id?: string; 
+  healthDelta: number;
+  wealthDelta: number;
+  psychologyDelta: number;
+  cascadeEffects?: {
+    health: string[];
+    wealth: string[];
+    psychology: string[];
+  };
+  created_at?: string;
 }
 
 // Function to create a new simulation
@@ -100,11 +116,12 @@ export const subscribeSimulations = (
   callback: (payload: RealtimePostgresChangesPayload<Simulation>) => void
 ): RealtimeChannel => {
   if (simulationChannel) {
-    console.log("Already subscribed to simulations. Unsubscribing from previous channel.");
-    supabase.removeChannel(simulationChannel);
+    console.log("Already subscribed to simulations. Removing previous channel to avoid duplicates.");
+    supabase.removeChannel(simulationChannel).catch(e => console.warn("Error removing previous sim channel", e));
+    simulationChannel = null; // Ensure it's nullified before creating a new one
   }
   
-  const channelName = `simulations_user_${userId}`;
+  const channelName = `simulations_user_${userId}_${Date.now()}`; // Add timestamp for more uniqueness if needed rapidly
   simulationChannel = supabase
     .channel(channelName)
     .on<Simulation>(
@@ -122,11 +139,10 @@ export const subscribeSimulations = (
     )
     .subscribe((status, err) => {
       if (status === 'SUBSCRIBED') {
-        console.log(`Successfully subscribed to new simulations for user ${userId}`);
-      } else if (status === 'CHANNEL_ERROR') {
-        console.error(`Error subscribing to simulations channel: ${err?.message}`);
-      } else if (status === 'TIMED_OUT') {
-        console.warn('Simulations subscription timed out.');
+        console.log(`Successfully subscribed to new simulations for user ${userId} on channel ${channelName}`);
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        console.error(`Error subscribing to simulations channel for user ${userId} on ${channelName}: ${err?.message || status}`);
+        // Optionally try to resubscribe or notify user
       }
     });
 
@@ -142,16 +158,18 @@ export const unsubscribeSimulations = () => {
       })
       .catch(error => {
         console.error("Error unsubscribing from simulations channel:", error);
+        // simulationChannel might still be considered active by Supabase client internally
+        // Setting to null regardless to allow resubscription attempt by our logic
+        simulationChannel = null; 
       });
+  } else {
+    console.log("No active simulation channel to unsubscribe from.");
   }
 };
 
 // For SimulationCard, the old SimulationResult might need to map to this new Simulation type
 // If SimulationResult from the old context is still used, ensure it's compatible or update it.
 // For now, I'll assume SimulationCard will use the new `Simulation` type.
-export type { SimulationResult } from './simulation'; // This line might be problematic if SimulationResult was defined here.
-// Let's ensure `SimulationResult` is our main type, maybe rename `Simulation` to `SimulationRecord` if conflict.
-// For clarity, I'll use `Simulation` as the primary type from now on, matching the table.
 // The existing SimulationCard used SimulationResult from '@lib/api' which doesn't exist anymore.
 // The old SimulationResult type definition in `src/lib/api/simulation.ts` (allowed files) was:
 /*

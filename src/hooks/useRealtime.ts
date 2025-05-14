@@ -1,16 +1,16 @@
 
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/lib/supabaseClient'; // Your Supabase client
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient';
+import type { RealtimeChannel, RealtimePostgresChangesPayload, REALTIME_POSTGRES_CHANGES_LISTEN_EVENT } from '@supabase/supabase-js';
 
 interface UseRealtimeOptions<T> {
   table: string;
   schema?: string;
-  filter?: string; // e.g., 'user_id=eq.your_user_id'
-  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
+  filter?: string;
+  event?: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT;
   initialData?: T[];
-  onDataChange?: (newData: T, payload: RealtimePostgresChangesPayload<T>) => T | void; // For fine-grained updates
-  onAllDataChange?: (newAllData: T[], payload: RealtimePostgresChangesPayload<any>) => T[] | void; // For full re-fetch/update strategy
+  onDataChange?: (newData: T, payload: RealtimePostgresChangesPayload<T>) => T | void;
+  onAllDataChange?: (newAllData: T[], payload: RealtimePostgresChangesPayload<T>) => T[] | void;
 }
 
 const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => {
@@ -28,25 +28,23 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
   const [error, setError] = useState<Error | null>(null);
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
-  const handleIncomingChange = useCallback((payload: RealtimePostgresChangesPayload<any>) => {
+  const handleIncomingChange = useCallback((payload: RealtimePostgresChangesPayload<T>) => {
     console.log(`Realtime change on table ${table}:`, payload);
     
     if (onAllDataChange) {
-      // If a specific handler for all data is provided, use it.
-      // This is useful if you prefer to re-fetch all data or have complex merge logic.
-      const updatedAllData = onAllDataChange(data, payload);
-      if (updatedAllData) {
-        setData(updatedAllData);
-      }
+      setData(prevData => { // Pass previous data to onAllDataChange
+        const updatedAllData = onAllDataChange(prevData, payload);
+        return updatedAllData ? updatedAllData : prevData; // Return previous data if undefined
+      });
       return;
     }
 
     if (onDataChange) {
-      // If a specific handler for individual item changes is provided
-      const changedRecord = payload.new as T || payload.old as T; // Get the record
+      const changedRecord = (payload.eventType === 'DELETE' ? payload.old : payload.new) as T;
       if (changedRecord) {
-        const updatedRecord = onDataChange(changedRecord, payload);
-        if (updatedRecord) { // If handler returns an updated record, merge it
+        const updatedRecordOrVoid = onDataChange(changedRecord, payload);
+        if (updatedRecordOrVoid !== undefined) { // Check if something is returned
+             const updatedRecord = updatedRecordOrVoid as T; // Cast if not void
              setData(prevData => {
                 const index = prevData.findIndex(item => item.id === updatedRecord.id);
                 if (index > -1) {
@@ -56,19 +54,19 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
                 }
                 return payload.eventType === 'INSERT' ? [...prevData, updatedRecord] : prevData;
             });
-        } // Else, assume onDataChange handles state internally or no update needed for this item
+        }
       }
       return;
     }
     
-    // Default optimistic update logic (can be improved)
     setData(currentData => {
       let newData = [...currentData];
       switch (payload.eventType) {
         case 'INSERT':
-          // Check if already exists to prevent duplicates from optimistic + subscription
-          if (!newData.find(item => item.id === (payload.new as T).id)) {
+          if ((payload.new as T).id && !newData.find(item => item.id === (payload.new as T).id)) {
             newData.push(payload.new as T);
+          } else if (!(payload.new as T).id) {
+             newData.push(payload.new as T);
           }
           break;
         case 'UPDATE':
@@ -82,13 +80,18 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
       }
       return newData;
     });
-  }, [table, onDataChange, onAllDataChange, data]); // Added data to dependency array for onAllDataChange
+  }, [table, onDataChange, onAllDataChange]); // Removed 'data' from dependency array to avoid potential loops if onAllDataChange modifies data state directly.
 
   useEffect(() => {
-    const newChannelName = `realtime:${schema}:${table}:${filter || 'all'}`;
+    const baseChannelName = `realtime:${schema}:${table}`;
+    const channelNameWithFilter = filter ? `${baseChannelName}:${filter}` : baseChannelName;
     
-    const ch = supabase
-      .channel(newChannelName)
+    if (channel) {
+        supabase.removeChannel(channel).catch(e => console.error("Error removing previous channel", e));
+    }
+
+    const newChannel = supabase
+      .channel(channelNameWithFilter)
       .on(
         'postgres_changes',
         {
@@ -101,30 +104,27 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`Successfully subscribed to ${newChannelName}`);
+          console.log(`Successfully subscribed to ${channelNameWithFilter}`);
+          setError(null);
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-          console.error(`Subscription error on ${newChannelName}:`, err || status);
+          console.error(`Subscription error on ${channelNameWithFilter}:`, err?.message || status);
           setError(err || new Error(`Subscription status: ${status}`));
-          // Optionally implement retry logic here
         }
       });
 
-    setChannel(ch);
+    setChannel(newChannel);
 
     return () => {
-      if (ch) {
-        supabase.removeChannel(ch).then(() => {
-          console.log(`Unsubscribed from ${newChannelName}`);
-        }).catch(removeError => {
-          console.error(`Error unsubscribing from ${newChannelName}:`, removeError);
+      if (newChannel) {
+        supabase.removeChannel(newChannel).catch(removeError => {
+          console.error(`Error unsubscribing from ${channelNameWithFilter}:`, removeError);
         });
       }
       setChannel(null);
     };
-  }, [table, schema, filter, event, handleIncomingChange]); // handleIncomingChange is stable due to useCallback
+  }, [table, schema, filter, event, handleIncomingChange]);
 
   return { data, setData, error, channel };
 };
 
 export default useRealtime;
-

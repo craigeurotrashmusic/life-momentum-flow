@@ -1,12 +1,10 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { submitEmotion } from "@/lib/api";
+import { submitEmotionalState } from "@/lib/api/emotion";
 import { toast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,9 +24,10 @@ const EmotionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => 
   });
 
   const onSubmit = async (data: EmotionFormData) => {
+    if (!setIsSubmitting) return;
     setIsSubmitting(true);
     try {
-      await submitEmotion(data);
+      await submitEmotionalState(data);
       toast({
         title: "Emotional baseline saved",
         description: "Your emotional baseline has been recorded.",
@@ -76,7 +75,7 @@ const EmotionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => 
                       step={1}
                       defaultValue={[field.value]}
                       onValueChange={(value) => field.onChange(value[0])}
-                      className="py-2" // Add some padding for easier thumb interaction
+                      className="py-2"
                     />
                     <div className="flex justify-between text-sm text-muted-foreground">
                       <span>Stressed</span>

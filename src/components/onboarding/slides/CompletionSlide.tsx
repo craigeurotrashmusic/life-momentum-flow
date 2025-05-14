@@ -1,20 +1,21 @@
-
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
-import { prefetchDashboardData } from "@/lib/api";
+import { prefetchDashboardData, markOnboardingComplete } from "@/lib/api/onboardingData";
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 interface CompletionSlideProps {
-  onComplete: () => void;
-  isSubmitting: boolean;
+  onComplete?: () => void;
+  isSubmitting?: boolean;
   setIsSubmitting: (value: boolean) => void;
 }
 
-const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: CompletionSlideProps) => {
+const CompletionSlide = ({ setIsSubmitting }: CompletionSlideProps) => {
   const navigate = useNavigate();
+  const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
 
   useEffect(() => {
     // Prefetch dashboard data in the background
@@ -30,14 +31,11 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
   }, []);
 
   const handleComplete = async () => {
+    setLocalIsSubmitting(true);
     setIsSubmitting(true);
     try {
-      // Mark onboarding as completed in localStorage
-      localStorage.setItem('hasCompletedOnboarding', 'true');
-      
-      // Redirect to auth page for account creation
+      await markOnboardingComplete();
       navigate("/auth");
-      
     } catch (error) {
       toast({
         title: "Error",
@@ -45,6 +43,7 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
         variant: "destructive",
       });
       console.error("Error completing onboarding:", error);
+      setLocalIsSubmitting(false);
       setIsSubmitting(false);
     }
   };
@@ -94,9 +93,9 @@ const CompletionSlide = ({ onComplete, isSubmitting, setIsSubmitting }: Completi
             onClick={handleComplete}
             size="lg"
             className="rounded-full px-8 py-6 text-lg group fixed-mobile-button"
-            disabled={isSubmitting}
+            disabled={localIsSubmitting}
           >
-            {isSubmitting ? "Preparing..." : "Create Account"}
+            {localIsSubmitting ? "Preparing..." : "Create Account"}
             <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </Button>
         </div>

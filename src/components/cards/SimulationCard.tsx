@@ -8,7 +8,8 @@ import {
   CarouselContent,
   CarouselItem,
   CarouselApi,
-} from "@/components/ui/carousel"; // Removed Next/Previous as we'll handle step externally
+  type CarouselOptions,
+} from "@/components/ui/carousel";
 import ScenarioForm from '@/components/simulation/ScenarioForm';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from '@/components/ui/badge';
@@ -17,12 +18,12 @@ import {
   listRecentSimulations, 
   subscribeSimulations, 
   unsubscribeSimulations,
-  Simulation, // Use the new Simulation type
+  Simulation,
   ScenarioType 
-} from '@/lib/api/simulation'; // Updated import
+} from '@/lib/api/simulation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Assuming useAuth hook provides userId
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts'; // For charts
+import { useAuth } from '@/hooks/useAuth'; // Corrected import path
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 // Lazy load heavy components (DriftCorrection might be less relevant if not directly tied to simulation output display)
 // const DriftCorrection = lazy(() => import('@/components/simulation/DriftCorrection'));
@@ -80,35 +81,38 @@ const SimulationCard = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const channel = subscribeSimulations(user.id, (payload) => {
+    const simulationSubscription = subscribeSimulations(user.id, (payload) => {
       if (payload.eventType === 'INSERT') {
         const newSim = payload.new as Simulation;
-        setRecentSimulations(prev => [newSim, ...prev.slice(0,4)]); // Add to recent sims
-        // If this new simulation is the one we just ran, update currentSimulation
-        if (currentSimulation?.id === undefined && newSim.scenario_type === selectedScenario?.type) { // Crude check
+        setRecentSimulations(prev => [newSim, ...prev.slice(0,4)]);
+        if (currentSimulation?.id === undefined && newSim.scenario_type === selectedScenario?.type) {
              setCurrentSimulation(newSim);
-             setActiveStep(1); // Move to results pane
+             setActiveStep(1); 
         }
       }
     });
     return () => {
-      unsubscribeSimulations(); // Uses the module-level channel management
+      unsubscribeSimulations(); 
     };
   }, [user?.id, currentSimulation, selectedScenario]);
   
   useEffect(() => {
     if (!carouselApi) return;
-    carouselApi.scrollTo(activeStep, false); // Jump to step, no animation while syncing
-    carouselApi.on("select", () => {
-      setActiveStep(carouselApi.selectedScrollSnap());
-    });
+    carouselApi.scrollTo(activeStep, false); 
+    const onSelect = () => {
+        if (carouselApi) setActiveStep(carouselApi.selectedScrollSnap());
+    };
+    carouselApi.on("select", onSelect);
+    return () => {
+        if (carouselApi) carouselApi.off("select", onSelect);
+    };
   }, [carouselApi, activeStep]);
 
 
   const handleScenarioSelect = (scenario: Scenario) => {
     setSelectedScenario(scenario);
-    setCurrentSimulation(null); // Reset previous simulation
-    setActiveStep(0); // Start at form
+    setCurrentSimulation(null); 
+    setActiveStep(0); 
     setIsDialogOpen(true);
   };
   
@@ -116,14 +120,12 @@ const SimulationCard = () => {
     if (!user?.id || !selectedScenario) return;
     try {
       setIsSubmitting(true);
-      // The createSimulation now returns the full simulation object or null
       const newSim = await createSimulation(user.id, {
         scenario_type: selectedScenario.type,
         parameters: params.parameters,
       });
       if (newSim) {
-        setCurrentSimulation(newSim); // Set current sim for display
-        // setActiveStep(1); // Subscription should handle this
+        setCurrentSimulation(newSim);
         toast({
           title: "Simulation Submitted",
           description: "Your simulation is processing. Results will appear shortly.",
@@ -145,18 +147,14 @@ const SimulationCard = () => {
   
   const handleApplyToClarityHub = () => {
     if (!currentSimulation) return;
-    // This logic will be tied to ClarityHubContext updates
     toast({
       title: "Applied to Clarity Hub (Conceptual)",
       description: `Insights from simulation ${currentSimulation.id} applied.`,
     });
-    // Potentially close dialog or move to a summary step
-    // setIsDialogOpen(false); 
   };
 
   const handleTriggerDriftCorrection = () => {
     if(!currentSimulation) return;
-    // This would navigate or open another modal for drift correction
      toast({
       title: "Trigger Drift Correction (Conceptual)",
       description: `Corrective actions based on ${currentSimulation.id} initiated.`,
@@ -172,15 +170,13 @@ const SimulationCard = () => {
     }
   };
 
-  // Chart data preparation - simple example for 7 days
   const getChartData = (sim: Simulation | null) => {
     if (!sim) return [];
     const data = [];
-    // Mock 7 day projection - this should be more sophisticated
     for (let i = 1; i <= 7; i++) {
       data.push({
         day: `Day ${i}`,
-        health: (sim.health_delta || 0) * i, // Simple linear projection
+        health: (sim.health_delta || 0) * i, 
         wealth: (sim.wealth_delta || 0) * i,
         psychology: (sim.psychology_delta || 0) * i,
       });
@@ -188,6 +184,11 @@ const SimulationCard = () => {
     return data;
   };
   
+  const carouselOptions: CarouselOptions = {
+    align: "start",
+    // draggable: false, // Removed problematic option
+  };
+
   return (
     <LifeCard 
       title="Dynamic Simulation Sandbox" 
@@ -204,7 +205,6 @@ const SimulationCard = () => {
               className="p-4 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors cursor-pointer flex justify-between items-center"
               onClick={() => handleScenarioSelect(scenario)}
             >
-              {/* ... keep existing scenario rendering ... */}
               <div className="flex items-center">
                 <div className="mr-3 p-2 rounded-full bg-primary/20">
                   {scenario.icon}
@@ -268,10 +268,9 @@ const SimulationCard = () => {
           
           <div className="p-6">
             {selectedScenario ? (
-              <Carousel setApi={setCarouselApi} className="w-full" opts={{ align: "start", draggable: false }}>
+              <Carousel setApi={setCarouselApi} className="w-full" opts={carouselOptions}>
                 <CarouselContent>
-                  {/* Pane 1: Parameters */}
-                  <CarouselItem className="min-h-[400px]"> {/* Ensure items have enough height */}
+                  <CarouselItem className="min-h-[400px]">
                     <h3 className="text-lg font-medium mb-1">Simulation Parameters</h3>
                     <p className="text-muted-foreground mb-4 text-sm">{selectedScenario.description}</p>
                     <ScenarioForm 
@@ -281,7 +280,6 @@ const SimulationCard = () => {
                     />
                   </CarouselItem>
                   
-                  {/* Pane 2: Projected Outputs */}
                   <CarouselItem className="min-h-[400px]">
                     <h3 className="text-lg font-medium mb-1">Projected Outputs (7-day)</h3>
                     {!currentSimulation ? (
@@ -321,7 +319,6 @@ const SimulationCard = () => {
                     )}
                   </CarouselItem>
                   
-                  {/* Pane 3: Actions */}
                   <CarouselItem className="min-h-[400px]">
                     <h3 className="text-lg font-medium mb-1">Take Action</h3>
                     {!currentSimulation ? (
@@ -336,10 +333,6 @@ const SimulationCard = () => {
                         <Button onClick={handleTriggerDriftCorrection} className="w-full" variant="outline">
                           <BarChart3 size={16} className="mr-2"/> Trigger Drift Correction
                         </Button>
-                         {/* Placeholder for DriftCorrection component if needed */}
-                         {/* <Suspense fallback={<Skeleton className="w-full h-[200px]" />}>
-                           <DriftCorrection result={currentSimulation} />
-                         </Suspense> */}
                       </div>
                     )}
                   </CarouselItem>
@@ -364,15 +357,15 @@ const SimulationCard = () => {
               <Button
                 size="sm"
                 onClick={() => {
-                  if (activeStep === 0 && !isSubmitting) { // On Parameters step, "Next" means run (handled by form's submit)
+                  if (activeStep === 0 && !isSubmitting) { 
                      toast({ title: "Info", description: "Please fill the form and click 'Run Simulation' button inside the form."});
                   } else if (activeStep < 2 && currentSimulation) {
                     carouselApi?.scrollNext();
                   } else if (activeStep === 2) {
-                    handleApplyToClarityHub(); // Or another primary action for the last step
+                    handleApplyToClarityHub(); 
                   }
                 }}
-                disabled={ (activeStep === 0 && isSubmitting) || (activeStep > 0 && !currentSimulation) || !carouselApi?.canScrollNext() && activeStep !==2}
+                disabled={ (activeStep === 0 && isSubmitting) || (activeStep > 0 && !currentSimulation) || (!carouselApi?.canScrollNext() && activeStep !==2)}
               > {activeStep === 2 ? "Apply All" : "Next"} <ArrowRight size={16} className="ml-1" /> </Button>
             </div>
         </DialogContent>

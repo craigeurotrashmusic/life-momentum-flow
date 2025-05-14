@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { SimulationResult } from '@/lib/api';
+import type { SimulationResult } from '@/lib/api/simulation';
 import { toast } from "@/hooks/use-toast";
 
 export function useSimulationSocket(simulationId?: string) {
@@ -8,14 +7,12 @@ export function useSimulationSocket(simulationId?: string) {
   const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
-  // This is a mock implementation - in a real app, we'd connect to a WebSocket server
   useEffect(() => {
     if (!simulationId) return;
     
     console.log(`Subscribing to simulation updates for ${simulationId}`);
     setIsConnected(true);
     
-    // Mock receiving a result after 3 seconds
     const timeoutId = setTimeout(() => {
       const mockResult: SimulationResult = {
         id: simulationId,
@@ -26,17 +23,14 @@ export function useSimulationSocket(simulationId?: string) {
           health: [
             "Decreased energy levels",
             "Weakened immune system",
-            "Slower recovery from exercise"
           ],
           wealth: [
             "Reduced monthly savings",
             "Delayed investment goals",
-            "Increased stress about finances"
           ],
           psychology: [
             "Higher stress levels",
-            "Decreased focus and productivity",
-            "Mood swings and irritability"
+            "Decreased focus",
           ]
         }
       };

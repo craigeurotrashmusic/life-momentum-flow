@@ -1,13 +1,11 @@
-
 import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchClarityMetrics, refreshClarityMetrics } from '@/lib/api/clarity';
 import type { ClarityMetrics } from '@/types/clarity';
-import { subscribeSimulations, unsubscribeSimulations, Simulation } from '@/lib/api/simulation'; // Added simulation imports
-import { useAuth } from '@/hooks/useAuth'; // Assuming useAuth provides userId
+import { subscribeSimulations, unsubscribeSimulations, Simulation } from '@/lib/api/simulation'; // Corrected import
+import { useAuth } from '@/hooks/useAuth'; // Corrected import path
 import { toast } from '@/components/ui/use-toast';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-
 
 interface ClarityHubContextType {
   metrics: ClarityMetrics | undefined;
@@ -22,22 +20,22 @@ const ClarityHubContext = createContext<ClarityHubContextType | undefined>(undef
 
 export const ClarityHubProvider = ({ children }: { children: ReactNode }) => {
   const queryClient = useQueryClient();
-  const { user } = useAuth(); // Get user for userId
+  const { user } = useAuth();
 
-  const { data: metrics, isLoading, isError, error, refetch: refetchClarityMetrics } = useQuery<ClarityMetrics, Error>({
+  const { data: metrics, isLoading, isError, error, refetch: refetchClarityMetricsQuery } = useQuery<ClarityMetrics, Error>({
     queryKey: ['clarityMetrics', user?.id],
     queryFn: () => {
-      if (!user?.id) return Promise.reject(new Error("User not authenticated"));
+      if (!user?.id) return Promise.reject(new Error("User not authenticated for Clarity Metrics"));
       return fetchClarityMetrics(user.id);
     },
-    enabled: !!user?.id, // Only run if user.id is available
-    refetchInterval: 300000, // Refetch every 5 minutes
+    enabled: !!user?.id, 
+    refetchInterval: 300000, 
     staleTime: 60000, 
   });
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!user?.id) return Promise.reject(new Error("User not authenticated"));
+      if (!user?.id) return Promise.reject(new Error("User not authenticated for refreshing Clarity Metrics"));
       return refreshClarityMetrics(user.id);
     },
     onSuccess: (data) => {
@@ -56,33 +54,28 @@ export const ClarityHubProvider = ({ children }: { children: ReactNode }) => {
     },
   });
 
-  // Subscribe to simulation changes
   useEffect(() => {
     if (!user?.id) return;
 
     const handleNewSimulation = (payload: RealtimePostgresChangesPayload<Simulation>) => {
       if (payload.eventType === 'INSERT') {
-        const newSimulation = payload.new;
+        const newSimulation = payload.new as Simulation;
         console.log('New simulation in ClarityHubContext:', newSimulation);
-        // TODO: Logic to determine if/how this simulation impacts clarity metrics
-        // For now, we can just refetch clarity metrics as a simple update mechanism
-        // This could be refined to be more intelligent, e.g. if simulation deltas directly map to clarity score changes
         toast({
             title: "Simulation Impact",
             description: `New simulation '${newSimulation.scenario_type}' recorded. Recalculating Clarity Hub...`,
             duration: 5000,
         });
-        refetchClarityMetrics(); 
+        refetchClarityMetricsQuery(); 
       }
     };
     
-    const channel = subscribeSimulations(user.id, handleNewSimulation);
+    const simulationSubscription = subscribeSimulations(user.id, handleNewSimulation);
 
     return () => {
-      unsubscribeSimulations(); // Uses module-level channel management
+      unsubscribeSimulations(); // Use the specific unsubscribe function
     };
-  }, [user?.id, queryClient, refetchClarityMetrics]);
-
+  }, [user?.id, queryClient, refetchClarityMetricsQuery]);
 
   const triggerRefreshMetrics = () => {
     if (user?.id) {

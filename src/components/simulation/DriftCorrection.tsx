@@ -1,12 +1,11 @@
-
 import React from 'react';
-import { SimulationResult } from '@/lib/api';
+import type { SimulationResult } from '@/lib/api/simulation'; // Corrected import path for SimulationResult type
 import { Button } from "@/components/ui/button";
 import { Check, AlertCircle } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 
 interface DriftCorrectionProps {
-  result: SimulationResult;
+  result: SimulationResult; // Using the specific SimulationResult type defined in simulation.ts
 }
 
 export const DriftCorrection = ({ result }: DriftCorrectionProps) => {

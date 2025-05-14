@@ -3,7 +3,7 @@ import { Calendar, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { fetchEpochs, subscribeToEpochChanges, Epoch, updateEpoch } from '@/lib/api/epochs';
-import { subscribeSimulations as subscribeToSimulationsAPI, unsubscribeSimulations, Simulation } from '@/lib/api/simulation';
+import { subscribeSimulations, unsubscribeSimulations, Simulation } from '@/lib/api/simulation';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,7 +56,7 @@ const EpochTracker = () => {
 
     let epochSubscription: ReturnType<typeof subscribeToEpochChanges> | null = null;
     if (userId) {
-      epochSubscription = subscribeToEpochChanges(userId, (payload) => {
+      epochSubscription = subscribeToEpochChanges(userId, (payload: any) => {
         console.log('Epoch change received in EpochTracker:', payload);
         loadEpochs(); 
       });
@@ -77,46 +77,33 @@ const EpochTracker = () => {
       if (payload.eventType === 'INSERT' && currentEpoch) {
         const newSimulation = payload.new as Simulation;
         console.log('New simulation impacting EpochTracker:', newSimulation);
-        // Conceptual: Dynamic Recalibration Logic
-        // This is where you'd analyze newSimulation.health_delta, etc.
-        // and potentially adjust currentEpoch.endDate or progress.
-        // For now, just a toast and a conceptual log.
         toast({
           title: "Simulation Received",
           description: `Simulation '${newSimulation.scenario_type}' may impact current epoch. Consider recalibrating.`,
           duration: 7000,
         });
-        // Example: If a simulation has a large negative impact, maybe flag epoch for review
-        // if ((newSimulation.health_delta || 0) < -5) {
-        //   console.log("EpochTracker: Significant negative health delta from simulation. Recalibration might be needed.");
-        //   // Potentially call an updateEpoch if dates need shifting, e.g.
-        //   // updateEpoch(currentEpoch.id, { ...currentEpoch, notes: "Recalibration suggested due to simulation" });
-        // }
       }
     };
 
-    const simulationApiChannel = subscribeToSimulationsAPI(userId, handleNewSimulation);
+    const simulationApiChannel = subscribeSimulations(userId, handleNewSimulation);
     
     return () => {
-      unsubscribeSimulations(); // Uses module-level channel management
+      unsubscribeSimulations(); // Call the specific unsubscribe function for simulations
     };
-  }, [userId, currentEpoch, loadEpochs]); // Add loadEpochs if recalibration updates epochs
+  }, [userId, currentEpoch, loadEpochs]); // Removed queryClient as it's not used here
 
   const handleRecalibrate = async () => {
     if (!currentEpoch || !userId) {
       toast({ title: "Cannot Recalibrate", description: "No current epoch or user session.", variant: "destructive" });
       return;
     }
-    // Conceptual: This would trigger a more complex recalibration logic
-    // For now, let's imagine it extends the epoch by a day if there was a negative simulation recently
-    // This is a placeholder for a more sophisticated logic
     toast({ title: "Recalibrating...", description: "Adjusting epoch based on recent events (conceptual)." });
     try {
         const newEndDate = new Date(currentEpoch.endDate);
-        newEndDate.setDate(newEndDate.getDate() + 1); // Extend by 1 day as an example
-        await updateEpoch(userId, currentEpoch.id, { endDate: newEndDate.toISOString().split('T')[0] });
+        newEndDate.setDate(newEndDate.getDate() + 1); 
+        await updateEpoch(currentEpoch.id, { endDate: newEndDate.toISOString().split('T')[0] });
         toast({ title: "Epoch Recalibrated", description: "Epoch end date extended (example)." });
-        loadEpochs(); // Refresh epochs
+        loadEpochs(); 
     } catch(e) {
         toast({ title: "Recalibration Failed", description: "Could not update epoch.", variant: "destructive"});
     }

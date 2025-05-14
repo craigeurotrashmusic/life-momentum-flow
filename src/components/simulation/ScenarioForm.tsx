@@ -1,305 +1,220 @@
-
 import React from 'react';
-import { ScenarioType } from '@/lib/api';
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
+import { ScenarioType } from '@/lib/api/simulation'; // Corrected import path for ScenarioType
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-
-interface ScenarioFormProps {
-  scenarioType: ScenarioType;
-  onSubmit: (values: any) => void;
-  isSubmitting: boolean;
-}
+import { z } from 'zod';
 
 const sleepSchema = z.object({
-  hoursOfSleep: z.number().min(3).max(12),
-  daysPerWeek: z.number().min(1).max(7),
+  hoursSlept: z.number().min(0).max(12),
+  sleepQuality: z.number().min(1).max(5),
 });
 
 const financeSchema = z.object({
-  budgetExceedPercent: z.number().min(5).max(50),
-  durationInMonths: z.number().min(1).max(12),
+  unexpectedExpense: z.number().min(0),
+  investmentChange: z.number(), 
 });
 
 const workoutSchema = z.object({
-  missedPercentage: z.number().min(10).max(100),
-  workoutType: z.enum(['cardio', 'strength', 'hybrid']),
+  daysSkipped: z.number().min(0).max(7),
+  intensityDrop: z.number().min(0).max(100), 
 });
 
 const dietSchema = z.object({
-  mealType: z.enum(['skip-breakfast', 'fast-food', 'processed']),
-  frequencyPerWeek: z.number().min(1).max(7),
+  calorieSurplus: z.number(), 
+  processedFoodIntake: z.number().min(0).max(100),
 });
 
-export const ScenarioForm = ({ scenarioType, onSubmit, isSubmitting }: ScenarioFormProps) => {
-  let schema;
-  let defaultValues: any = {};
-  
-  switch (scenarioType) {
-    case 'sleep':
-      schema = sleepSchema;
-      defaultValues = { hoursOfSleep: 5, daysPerWeek: 5 };
-      break;
-    case 'finance':
-      schema = financeSchema;
-      defaultValues = { budgetExceedPercent: 20, durationInMonths: 3 };
-      break;
-    case 'workout':
-      schema = workoutSchema;
-      defaultValues = { missedPercentage: 50, workoutType: 'cardio' };
-      break;
-    case 'diet':
-      schema = dietSchema;
-      defaultValues = { mealType: 'skip-breakfast', frequencyPerWeek: 3 };
-      break;
-  }
+const customSchema = z.object({
+  customInput: z.string().min(1, "Custom input cannot be empty"),
+});
 
-  const form = useForm({
-    resolver: zodResolver(schema),
-    defaultValues,
+
+const scenarioSchemas = {
+  sleep: sleepSchema,
+  finance: financeSchema,
+  workout: workoutSchema,
+  diet: dietSchema,
+  custom: customSchema,
+};
+
+interface ScenarioFormProps {
+  scenarioType: ScenarioType;
+  onSubmit: (data: { scenarioType: ScenarioType, parameters: Record<string, any> }) => void;
+  isSubmitting: boolean;
+}
+
+const ScenarioForm: React.FC<ScenarioFormProps> = ({ scenarioType, onSubmit, isSubmitting }) => {
+  const currentSchema = scenarioSchemas[scenarioType];
+  const { control, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(currentSchema),
+    defaultValues: scenarioType === 'sleep' ? { hoursSlept: 7, sleepQuality: 3 } :
+                   scenarioType === 'finance' ? { unexpectedExpense: 0, investmentChange: 0 } :
+                   scenarioType === 'workout' ? { daysSkipped: 0, intensityDrop: 0 } :
+                   scenarioType === 'diet' ? { calorieSurplus: 0, processedFoodIntake: 20 } :
+                   { customInput: "" }
   });
 
-  const handleSubmit = (values: any) => {
-    onSubmit({ scenarioType, parameters: values });
+  const handleFormSubmit = (data: Record<string, any>) => {
+    onSubmit({ scenarioType, parameters: data });
   };
+  
+  React.useEffect(() => {
+    Object.entries(errors).forEach(([fieldName, error]) => {
+      if (error && error.message) {
+        toast({
+          title: `Validation Error: ${fieldName}`,
+          description: String(error.message),
+          variant: "destructive",
+        });
+      }
+    });
+  }, [errors]);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {scenarioType === 'sleep' && (
-          <>
-            <FormField
-              control={form.control}
-              name="hoursOfSleep"
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+      {scenarioType === 'sleep' && (
+        <>
+          <div>
+            <Label htmlFor="hoursSlept">Hours Slept</Label>
+            <Controller
+              name="hoursSlept"
+              control={control}
+              render={({ field }) => <Input id="hoursSlept" type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />}
+            />
+            {errors.hoursSlept && <p className="text-red-500 text-sm">{String(errors.hoursSlept.message)}</p>}
+          </div>
+          <div>
+            <Label htmlFor="sleepQuality">Sleep Quality (1-5)</Label>
+            <Controller
+              name="sleepQuality"
+              control={control}
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Hours of Sleep Per Night</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{field.value} hours</span>
-                      </div>
-                      <Slider 
-                        value={[field.value]}
-                        min={3}
-                        max={12}
-                        step={0.5}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>3h</span>
-                        <span>12h</span>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    What if you consistently sleep this amount each night?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                <Slider
+                  id="sleepQuality"
+                  min={1} max={5} step={1}
+                  defaultValue={[field.value ?? 3]}
+                  onValueChange={(value) => field.onChange(value[0])}
+                />
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="daysPerWeek"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Days Per Week</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{field.value} days</span>
-                      </div>
-                      <Slider 
-                        value={[field.value]}
-                        min={1}
-                        max={7}
-                        step={1}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>1 day</span>
-                        <span>7 days</span>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    How many days per week would you follow this sleep pattern?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
+            {errors.sleepQuality && <p className="text-red-500 text-sm">{String(errors.sleepQuality.message)}</p>}
+          </div>
+        </>
+      )}
 
-        {scenarioType === 'finance' && (
-          <>
-            <FormField
-              control={form.control}
-              name="budgetExceedPercent"
+      {scenarioType === 'finance' && (
+        <>
+          <div>
+            <Label htmlFor="unexpectedExpense">Unexpected Expense ($)</Label>
+            <Controller
+              name="unexpectedExpense"
+              control={control}
+              render={({ field }) => <Input id="unexpectedExpense" type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />}
+            />
+             {errors.unexpectedExpense && <p className="text-red-500 text-sm">{String(errors.unexpectedExpense.message)}</p>}
+          </div>
+          <div>
+            <Label htmlFor="investmentChange">Investment Change (%)</Label>
+            <Controller
+              name="investmentChange"
+              control={control}
+              render={({ field }) => <Input id="investmentChange" type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />}
+            />
+             {errors.investmentChange && <p className="text-red-500 text-sm">{String(errors.investmentChange.message)}</p>}
+          </div>
+        </>
+      )}
+      
+      {scenarioType === 'workout' && (
+        <>
+          <div>
+            <Label htmlFor="daysSkipped">Days Skipped (0-7)</Label>
+            <Controller
+              name="daysSkipped"
+              control={control}
+              render={({ field }) => <Input id="daysSkipped" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} />}
+            />
+            {errors.daysSkipped && <p className="text-red-500 text-sm">{String(errors.daysSkipped.message)}</p>}
+          </div>
+          <div>
+            <Label htmlFor="intensityDrop">Intensity Drop (%)</Label>
+            <Controller
+              name="intensityDrop"
+              control={control}
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Budget Exceed Percentage</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{field.value}% over budget</span>
-                      </div>
-                      <Slider 
-                        value={[field.value]}
-                        min={5}
-                        max={50}
-                        step={5}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>5%</span>
-                        <span>50%</span>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    What if you exceed your budget by this percentage?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                 <Slider
+                  id="intensityDrop"
+                  min={0} max={100} step={5}
+                  defaultValue={[field.value ?? 0]}
+                  onValueChange={(value) => field.onChange(value[0])}
+                />
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="durationInMonths"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Duration (Months)</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">{field.value} months</span>
-                      </div>
-                      <Slider 
-                        value={[field.value]}
-                        min={1}
-                        max={12}
-                        step={1}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>1 month</span>
-                        <span>12 months</span>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    How long would this overspending pattern continue?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
+            {errors.intensityDrop && <p className="text-red-500 text-sm">{String(errors.intensityDrop.message)}</p>}
+          </div>
+        </>
+      )}
 
-        {scenarioType === 'workout' && (
-          <>
-            <FormField
-              control={form.control}
-              name="missedPercentage"
+      {scenarioType === 'diet' && (
+         <>
+          <div>
+            <Label htmlFor="calorieSurplus">Calorie Surplus/Deficit</Label>
+            <Controller
+              name="calorieSurplus"
+              control={control}
+              render={({ field }) => <Input id="calorieSurplus" type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value,10))} />}
+            />
+             {errors.calorieSurplus && <p className="text-red-500 text-sm">{String(errors.calorieSurplus.message)}</p>}
+          </div>
+          <div>
+            <Label htmlFor="processedFoodIntake">Processed Food Intake (%)</Label>
+            <Controller
+              name="processedFoodIntake"
+              control={control}
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Missed Workout Percentage</FormLabel>
-                  <FormControl>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Miss {field.value}% of workouts</span>
-                      </div>
-                      <Slider 
-                        value={[field.value]}
-                        min={10}
-                        max={100}
-                        step={10}
-                        onValueChange={(value) => field.onChange(value[0])}
-                      />
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>10%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                  </FormControl>
-                  <FormDescription>
-                    What if you miss this percentage of your scheduled workouts?
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                <Slider
+                  id="processedFoodIntake"
+                  min={0} max={100} step={5}
+                  defaultValue={[field.value ?? 20]}
+                  onValueChange={(value) => field.onChange(value[0])}
+                />
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="workoutType"
-              render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel>Workout Type</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                      className="flex flex-col space-y-1"
-                    >
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="cardio" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Cardio
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="strength" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Strength
-                        </FormLabel>
-                      </FormItem>
-                      <FormItem className="flex items-center space-x-3 space-y-0">
-                        <FormControl>
-                          <RadioGroupItem value="hybrid" />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          Hybrid
-                        </FormLabel>
-                      </FormItem>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
-        
-        <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Running Simulation..." : "Run Simulation"}
-        </Button>
-      </form>
-    </Form>
+            {errors.processedFoodIntake && <p className="text-red-500 text-sm">{String(errors.processedFoodIntake.message)}</p>}
+          </div>
+        </>
+      )}
+      
+      {scenarioType === 'custom' && (
+        <div>
+          <Label htmlFor="customInput">Custom Parameters (JSON or Text)</Label>
+          <Controller
+            name="customInput"
+            control={control}
+            render={({ field }) => (
+              <Textarea
+                id="customInput"
+                placeholder='e.g., {"stressEvent": "deadline approaching", "copingMechanism": "meditation"}'
+                className="min-h-[100px]"
+                {...field}
+              />
+            )}
+          />
+          {errors.customInput && <p className="text-red-500 text-sm">{String(errors.customInput.message)}</p>}
+        </div>
+      )}
+
+
+      <Button type="submit" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? 'Running...' : 'Run Simulation'}
+      </Button>
+    </form>
   );
 };
 

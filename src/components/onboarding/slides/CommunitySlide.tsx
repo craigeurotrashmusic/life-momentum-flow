@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { submitCommunity } from "@/lib/api";
+import { submitCommunityPreferences } from "@/lib/api/onboardingData";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -25,9 +24,10 @@ const CommunitySlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) =
   });
 
   const onSubmit = async (data: CommunityFormData) => {
+    if (!setIsSubmitting) return; // Guard against missing prop
     setIsSubmitting(true);
     try {
-      await submitCommunity(data);
+      await submitCommunityPreferences(data);
       toast({
         title: "Community preferences saved",
         description: "Your community preferences have been recorded.",

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { submitHealth } from "@/lib/api";
+import { submitHealthProfile } from "@/lib/api/health";
 import { toast } from "@/hooks/use-toast";
 import { SlideProps } from "./types";
 import {
@@ -45,7 +44,7 @@ const exerciseOptions = [
 
 const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
   const [selectedSupplements, setSelectedSupplements] = useState<string[]>([]);
-  const { control, handleSubmit, register } = useForm<HealthFormData>({
+  const { control, handleSubmit } = useForm<HealthFormData>({
     defaultValues: {
       supplements: [],
       sleepHours: 7,
@@ -54,10 +53,11 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
   });
 
   const onSubmit = async (data: HealthFormData) => {
+    if (!setIsSubmitting) return;
     data.supplements = selectedSupplements;
     setIsSubmitting(true);
     try {
-      await submitHealth(data);
+      await submitHealthProfile(data);
       toast({
         title: "Health profile saved",
         description: "Your health profile has been recorded.",
@@ -128,7 +128,7 @@ const HealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                       max={12}
                       step={0.5}
                       {...field}
-                      value={field.value}
+                      value={field.value} 
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       className="w-full py-3 px-4 text-base rounded-lg h-12"
                     />
