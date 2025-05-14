@@ -37,8 +37,7 @@ export function useRealtime<
 
     const channel = supabase.channel(channelName);
     
-    // Type assertion to help TypeScript understand this is a valid channel operation
-    const newChannel = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+    const newChannel = channel.on<RealtimePostgresChangesPayload<T>>(
       'postgres_changes',
       filterOptions,
       (payload) => {
@@ -92,8 +91,7 @@ export function useRealtimePostgresChanges<
 
     const channel = supabase.channel(channelName);
     
-    // Type assertion to help TypeScript understand this is a valid channel operation
-    const newChannel = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+    const newChannel = channel.on<RealtimePostgresChangesPayload<T>>(
       'postgres_changes',
       filterOptions,
       (payload) => {
@@ -135,8 +133,7 @@ export function subscribeToPostgresChanges<
 
   const channel = supabase.channel(channelName);
   
-  // Type assertion to help TypeScript understand this is a valid channel operation
-  const channelInstance = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+  const channelInstance = channel.on<RealtimePostgresChangesPayload<T>>(
     'postgres_changes',
     filterOptions,
     callback
@@ -167,3 +164,4 @@ export function removeSubscription(channelInstance: RealtimeChannel | null) {
   }
   return Promise.resolve();
 }
+
