@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { 
@@ -18,7 +19,7 @@ interface RealtimeData<T extends Record<string, any>> {
 export function useRealtime<T extends Record<string, any>>(
   tableName: string,
   schema: string = 'public',
-  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE, 
+  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE, // Corrected default value
   callback: (payload: RealtimeData<T>) => void
 ) {
   const [data, setData] = useState<RealtimeData<T>>({ new: null, old: null, errors: null });
@@ -28,7 +29,7 @@ export function useRealtime<T extends Record<string, any>>(
     const subscribeToChannel = async () => { 
       const newChannel = supabase.channel(`realtime_${tableName}_${event}`)
         .on(
-          'postgres_changes', 
+          'postgres_changes', // Corrected: Use string literal
           { event: event, schema: schema, table: tableName },
           (payload: RealtimePostgresChangesPayload<T>) => {
             const a_new = payload.new as T | null;
@@ -46,13 +47,15 @@ export function useRealtime<T extends Record<string, any>>(
 
     subscribeToChannel();
 
-    const newChannelInstance = channel; 
+    // Store the channel instance in a variable to use in the cleanup function
+    // This ensures that we are trying to remove the same channel instance that was created
+    const currentChannelInstance = channel; 
     return () => {
-      if (newChannelInstance) {
-        supabase.removeChannel(newChannelInstance);
+      if (currentChannelInstance) {
+        supabase.removeChannel(currentChannelInstance);
       }
     };
-  }, [tableName, schema, event, callback, channel]); 
+  }, [tableName, schema, event, callback]); // Removed channel from dependency array to avoid re-subscribing on channel state change
 
   return data;
 }
@@ -75,7 +78,7 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
     const subscribeToChannel = async () => { 
       const newChannel = supabase.channel(`table-db-changes_${tableName}_${eventType}`) 
         .on(
-          'postgres_changes', 
+          'postgres_changes', // Corrected: Use string literal
           { 
             event: eventType, 
             schema: schema,
@@ -91,14 +94,15 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
     };
 
     subscribeToChannel();
-
-    const newChannelInstance = channel; 
+    
+    const currentChannelInstance = channel;
     return () => {
-      if (newChannelInstance) {
-        supabase.removeChannel(newChannelInstance);
+      if (currentChannelInstance) {
+        supabase.removeChannel(currentChannelInstance);
       }
     };
-  }, [tableName, schema, eventType, callback, channel]); 
+  }, [tableName, schema, eventType, callback]); // Removed channel from dependency array
+
 }
 
 // Added constraint T extends Record<string, any>
@@ -111,7 +115,7 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
   const channelName = `table-changes_${table}_${eventType}_${Date.now()}`;
   const channelInstance = supabase.channel(channelName) 
     .on(
-      'postgres_changes', 
+      'postgres_changes', // Corrected: Use string literal
       {
         event: eventType,
         schema: schema,
@@ -131,7 +135,7 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
     unsubscribe: () => {
       if (channelInstance) {
         supabase.removeChannel(channelInstance).then(() => {
-          // channelInstance.unsubscribe() can also return a promise
+          console.log(`Successfully removed channel ${channelName}`);
         }).catch(error => console.error(`Error removing channel ${channelName}:`, error));
       }
     }

@@ -1,7 +1,7 @@
-
 import { supabase } from '../supabaseClient';
 import { toast } from '@/hooks/use-toast';
-import type { RealtimeChannel, RealtimePostgresChangesPayload, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'; // Added REALTIME_SUBSCRIBE_STATES
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'; 
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 
 export type ScenarioType = "sleep" | "finance" | "workout" | "diet" | "custom";
 
@@ -54,7 +54,7 @@ export const createSimulation = async (userId: string, params: CreateSimulationP
   };
 
   const { data, error } = await supabase
-    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings (read-only files)
+    .from('simulations') 
     .insert([{ 
       user_id: userId, 
       scenario_type: params.scenario_type,
@@ -78,7 +78,7 @@ export const createSimulation = async (userId: string, params: CreateSimulationP
 export const getSimulation = async (id: string): Promise<Simulation | null> => {
   console.log("Fetching simulation with ID:", id);
   const { data, error } = await supabase
-    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings
+    .from('simulations') 
     .select('*')
     .eq('id', id)
     .single();
@@ -94,7 +94,7 @@ export const getSimulation = async (id: string): Promise<Simulation | null> => {
 export const listRecentSimulations = async (userId: string, limit: number = 10): Promise<Simulation[]> => {
   console.log("Fetching recent simulations for user:", userId);
   const { data, error } = await supabase
-    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings
+    .from('simulations') 
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -123,24 +123,23 @@ export const subscribeSimulations = (
   const channelName = `simulations_user_${userId}_${Date.now()}`;
   simulationChannel = supabase
     .channel(channelName)
-    .on( // Note: Type assertion for payload in callback might be needed if generic T is not inferred correctly
-      'postgres_changes', // Corrected: Use string literal
+    .on(
+      'postgres_changes', 
       { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'simulations',
         filter: `user_id=eq.${userId}` 
       },
-      (payload) => { // payload is RealtimePostgresChangesPayload<{[key: string]: any;}> by default
+      (payload) => { 
         console.log('New simulation received via subscription:', payload);
-        // Explicitly cast payload to the expected type if necessary, though Supabase tries to infer
         callback(payload as RealtimePostgresChangesPayload<Simulation>);
       }
     )
     .subscribe((status, err) => {
-      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) { // Usage as value
         console.log(`Successfully subscribed to new simulations for user ${userId} on channel ${channelName}`);
-      } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CLOSED) {
+      } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CLOSED) { // Usage as value
         console.error(`Error subscribing to simulations channel for user ${userId} on ${channelName}: ${err?.message || status}`);
       }
     });

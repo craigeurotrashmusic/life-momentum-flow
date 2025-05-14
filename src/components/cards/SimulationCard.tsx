@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type EmblaOptionsType from 'embla-carousel-react'; // Corrected import
+import type { EmblaOptionsType } from 'embla-carousel-react'; // Corrected import
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'; // Added import
 import {
   Card,
   CardContent,
@@ -143,7 +144,7 @@ const SimulationCard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [simulationParams, user]);
+  }, [simulationParams, user, fetchRecent]); // Added fetchRecent to dependency array
 
   const fetchRecent = useCallback(async () => {
     if (!user) return;
@@ -163,45 +164,37 @@ const SimulationCard = () => {
   useEffect(() => {
     if (!activeSimulationId || !user) return;
 
-    // The callback for subscribeSimulations expects RealtimePostgresChangesPayload<Simulation>
     const onUpdate = (payload: RealtimePostgresChangesPayload<Simulation>) => {
       console.log('Live simulation update received via subscription:', payload);
       
-      // Check if the update is for the active simulation and is an INSERT or UPDATE event
       if (payload.new && payload.new.id === activeSimulationId) {
         const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
         
         setSimulationResult(prev => {
-          // If prev exists and has an id, keep it, otherwise use activeSimulationId
           const currentId = prev?.id || activeSimulationId; 
           return { 
             ...prev, 
             ...adaptedUpdate, 
-            id: currentId // Ensure ID is preserved correctly
+            id: currentId 
           };
         });
       } else if (payload.eventType === 'UPDATE' && payload.new && payload.new.id === activeSimulationId) {
-        // Also handle if payload.new is directly the Simulation object in some cases
          const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
          setSimulationResult(prev => ({ ...prev, ...adaptedUpdate, id: prev?.id || activeSimulationId }));
       }
     };
     
-    // subscribeSimulations now returns a RealtimeChannel instance. We need to call its unsubscribe method.
     const channel = subscribeSimulations(user.id, onUpdate); 
     
     return () => {
-      // To unsubscribe, call channel.unsubscribe() or supabase.removeChannel(channel)
-      // supabase.removeChannel(channel) is generally safer.
       if (channel) {
-        unsubscribeSimulations(); // This function handles removing the specific channel
+        unsubscribeSimulations(); 
       }
     };
   }, [activeSimulationId, user]);
   
   const chartData = useMemo(() => {
     if (!simulationResult) return [];
-    // This is a simplified example. You'd typically have time-series data.
     return [
       { name: 'Health', value: 100 + (simulationResult.healthDelta || 0), fill: '#82ca9d' },
       { name: 'Wealth', value: 100 + (simulationResult.wealthDelta || 0), fill: '#8884d8' },
@@ -221,7 +214,7 @@ const SimulationCard = () => {
     return null;
   };
   
-  const emblaOptions: EmblaOptionsType = { loop: false, align: 'start' };
+  const emblaOptions: EmblaOptionsType = { loop: false, align: 'start' }; // EmblaOptionsType usage corrected by import
 
   if (!user) {
     return (
@@ -336,7 +329,7 @@ const SimulationCard = () => {
                 <Carousel opts={emblaOptions} className="w-full">
                   <CarouselContent>
                     {Object.entries(simulationResult.cascadeEffects)
-                      .filter(([_, effects]) => effects && effects.length > 0) // Filter out empty effect arrays
+                      .filter(([_, effects]) => effects && effects.length > 0) 
                       .map(([pillar, effects]) => (
                       <CarouselItem key={pillar} className="md:basis-1/2 lg:basis-1/3">
                         <div className="p-1">
