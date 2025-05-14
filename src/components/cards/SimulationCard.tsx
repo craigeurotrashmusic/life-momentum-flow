@@ -1,31 +1,31 @@
-
-import { useState, lazy, Suspense } from 'react';
-import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useState, lazy, Suspense, useEffect, useCallback } from 'react';
+import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft, BarChart3 } from 'lucide-react';
 import LifeCard from './LifeCard';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
+  CarouselApi,
+} from "@/components/ui/carousel"; // Removed Next/Previous as we'll handle step externally
 import ScenarioForm from '@/components/simulation/ScenarioForm';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from '@/components/ui/badge';
-import { ScenarioType, SimulationParams, createSimulation, getSimulation } from '@/lib/api';
-import { useSimulationSocket } from '@/hooks/use-simulation-socket';
+import { 
+  createSimulation, 
+  listRecentSimulations, 
+  subscribeSimulations, 
+  unsubscribeSimulations,
+  Simulation, // Use the new Simulation type
+  ScenarioType 
+} from '@/lib/api/simulation'; // Updated import
 import { toast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth'; // Assuming useAuth hook provides userId
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts'; // For charts
 
-// Lazy load heavy components
-const SimulationResults = lazy(() => 
-  import('@/components/simulation/SimulationResults')
-);
-const DriftCorrection = lazy(() => 
-  import('@/components/simulation/DriftCorrection')
-);
+// Lazy load heavy components (DriftCorrection might be less relevant if not directly tied to simulation output display)
+// const DriftCorrection = lazy(() => import('@/components/simulation/DriftCorrection'));
 
 interface Scenario {
   id: string;
@@ -33,99 +33,170 @@ interface Scenario {
   name: string;
   description: string;
   icon: React.ReactNode;
+  // parameters specific to this scenario type could be defined here for the form
 }
 
 const SimulationCard = () => {
+  const { user } = useAuth(); // Get authenticated user
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(0); // 0: Form, 1: Results, 2: Actions (optional)
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [simulationId, setSimulationId] = useState<string | undefined>(undefined);
-  
-  const { isConnected, simulationResult } = useSimulationSocket(simulationId);
+  const [currentSimulation, setCurrentSimulation] = useState<Simulation | null>(null);
+  const [recentSimulations, setRecentSimulations] = useState<Simulation[]>([]);
+  const [carouselApi, setCarouselApi] = useState<CarouselApi>();
 
-  // Enhanced scenarios with improved descriptions
+  // Scenarios definition
   const scenarios: Scenario[] = [
     {
-      id: "sleep-deprivation",
-      type: "sleep",
-      name: "Sleep Deprivation",
-      description: "What if you consistently get less sleep than recommended? Analyze the cascading effects on your health, productivity, and emotional wellbeing.",
-      icon: <LineChart size={18} />,
+      id: "sleep-deprivation", type: "sleep", name: "Sleep Deprivation",
+      description: "Model impact of consistent under-sleeping.", icon: <LineChart size={18} />,
     },
     {
-      id: "overspending",
-      type: "finance",
-      name: "Budget Overrun",
-      description: "What if you exceed your monthly budget? See how your financial goals shift and identify potential impact on other life areas.",
-      icon: <LineChart size={18} />,
+      id: "budget-overrun", type: "finance", name: "Budget Overrun",
+      description: "Assess effects of exceeding monthly budget.", icon: <LineChart size={18} />,
     },
     {
-      id: "skip-workout",
-      type: "workout",
-      name: "Missed Workouts",
-      description: "What if you miss a significant portion of your scheduled workouts? Explore how this affects your fitness trajectory and mental state.",
-      icon: <LineChart size={18} />,
+      id: "missed-workouts", type: "workout", name: "Missed Workouts",
+      description: "Explore consequences of skipping exercise routines.", icon: <LineChart size={18} />,
     },
     {
-      id: "diet-change",
-      type: "diet",
-      name: "Diet Changes",
-      description: "What if you alter key aspects of your diet? Analyze nutritional impacts and how they ripple through your energy levels and goals.",
-      icon: <LineChart size={18} />,
+      id: "diet-changes", type: "diet", name: "Dietary Shift",
+      description: "Analyze nutritional impacts of altering diet.", icon: <LineChart size={18} />,
     }
   ];
+
+  const fetchRecentSimulations = useCallback(async () => {
+    if (user?.id) {
+      const sims = await listRecentSimulations(user.id, 5);
+      setRecentSimulations(sims);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchRecentSimulations();
+  }, [fetchRecentSimulations]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = subscribeSimulations(user.id, (payload) => {
+      if (payload.eventType === 'INSERT') {
+        const newSim = payload.new as Simulation;
+        setRecentSimulations(prev => [newSim, ...prev.slice(0,4)]); // Add to recent sims
+        // If this new simulation is the one we just ran, update currentSimulation
+        if (currentSimulation?.id === undefined && newSim.scenario_type === selectedScenario?.type) { // Crude check
+             setCurrentSimulation(newSim);
+             setActiveStep(1); // Move to results pane
+        }
+      }
+    });
+    return () => {
+      unsubscribeSimulations(); // Uses the module-level channel management
+    };
+  }, [user?.id, currentSimulation, selectedScenario]);
   
+  useEffect(() => {
+    if (!carouselApi) return;
+    carouselApi.scrollTo(activeStep, false); // Jump to step, no animation while syncing
+    carouselApi.on("select", () => {
+      setActiveStep(carouselApi.selectedScrollSnap());
+    });
+  }, [carouselApi, activeStep]);
+
+
   const handleScenarioSelect = (scenario: Scenario) => {
     setSelectedScenario(scenario);
+    setCurrentSimulation(null); // Reset previous simulation
+    setActiveStep(0); // Start at form
     setIsDialogOpen(true);
-    setActiveStep(0);
-    setSimulationId(undefined);
   };
   
-  const handleRunSimulation = async (params: SimulationParams) => {
+  const handleRunSimulation = async (params: { scenarioType: ScenarioType, parameters: Record<string, any> }) => {
+    if (!user?.id || !selectedScenario) return;
     try {
       setIsSubmitting(true);
-      const id = await createSimulation(params);
-      setSimulationId(id);
-      setActiveStep(1);
-      toast({
-        title: "Simulation Started",
-        description: "Your simulation is running. Results will be available shortly.",
+      // The createSimulation now returns the full simulation object or null
+      const newSim = await createSimulation(user.id, {
+        scenario_type: selectedScenario.type,
+        parameters: params.parameters,
       });
+      if (newSim) {
+        setCurrentSimulation(newSim); // Set current sim for display
+        // setActiveStep(1); // Subscription should handle this
+        toast({
+          title: "Simulation Submitted",
+          description: "Your simulation is processing. Results will appear shortly.",
+        });
+      } else {
+         toast({
+          title: "Simulation Error",
+          description: "Could not start the simulation. Please try again.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Error running simulation:", error);
+      toast({ title: "Simulation Error", description: "An unexpected error occurred.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
   
   const handleApplyToClarityHub = () => {
+    if (!currentSimulation) return;
+    // This logic will be tied to ClarityHubContext updates
     toast({
-      title: "Applied to Clarity Hub",
-      description: "Simulation insights have been applied to your Clarity Hub.",
+      title: "Applied to Clarity Hub (Conceptual)",
+      description: `Insights from simulation ${currentSimulation.id} applied.`,
     });
-    setIsDialogOpen(false);
+    // Potentially close dialog or move to a summary step
+    // setIsDialogOpen(false); 
   };
-  
+
+  const handleTriggerDriftCorrection = () => {
+    if(!currentSimulation) return;
+    // This would navigate or open another modal for drift correction
+     toast({
+      title: "Trigger Drift Correction (Conceptual)",
+      description: `Corrective actions based on ${currentSimulation.id} initiated.`,
+    });
+  }
+
   const getStepName = (step: number): string => {
     switch (step) {
       case 0: return "Parameters";
-      case 1: return "Results";
-      case 2: return "Corrections";
+      case 1: return "Projected Outputs";
+      case 2: return "Actions";
       default: return `Step ${step + 1}`;
     }
+  };
+
+  // Chart data preparation - simple example for 7 days
+  const getChartData = (sim: Simulation | null) => {
+    if (!sim) return [];
+    const data = [];
+    // Mock 7 day projection - this should be more sophisticated
+    for (let i = 1; i <= 7; i++) {
+      data.push({
+        day: `Day ${i}`,
+        health: (sim.health_delta || 0) * i, // Simple linear projection
+        wealth: (sim.wealth_delta || 0) * i,
+        psychology: (sim.psychology_delta || 0) * i,
+      });
+    }
+    return data;
   };
   
   return (
     <LifeCard 
-      title="Simulation Engine" 
+      title="Dynamic Simulation Sandbox" 
       icon={<Settings />}
-      color="bg-gradient-to-br from-amber-900/30 to-yellow-900/30"
+      color="bg-gradient-to-br from-teal-900/30 to-cyan-900/30" // New color
       expandable={true}
     >
       <div className="mt-4">
-        <h3 className="text-lg font-medium mb-3">What-if Scenarios</h3>
+        <h3 className="text-lg font-medium mb-3">Run a New Scenario</h3>
         <div className="space-y-3">
           {scenarios.map((scenario) => (
             <div 
@@ -133,6 +204,7 @@ const SimulationCard = () => {
               className="p-4 bg-secondary/20 rounded-xl hover:bg-secondary/30 transition-colors cursor-pointer flex justify-between items-center"
               onClick={() => handleScenarioSelect(scenario)}
             >
+              {/* ... keep existing scenario rendering ... */}
               <div className="flex items-center">
                 <div className="mr-3 p-2 rounded-full bg-primary/20">
                   {scenario.icon}
@@ -147,176 +219,162 @@ const SimulationCard = () => {
           ))}
         </div>
         
-        <Button 
-          className="w-full py-3 mt-4 rounded-xl flex items-center justify-center gap-2"
-          variant="outline"
-          onClick={() => setIsDialogOpen(true)}
-        >
-          <Zap size={16} />
-          <span>Create Custom Simulation</span>
-        </Button>
+        {recentSimulations.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-lg font-medium mb-3">Recent Simulations</h3>
+            <div className="space-y-2">
+              {recentSimulations.map(sim => (
+                <div key={sim.id} className="p-3 bg-secondary/10 rounded-lg text-sm">
+                  <span className="font-medium">{sim.scenario_type}</span> - Deltas: H({sim.health_delta?.toFixed(1)}), W({sim.wealth_delta?.toFixed(1)}), P({sim.psychology_delta?.toFixed(1)})
+                  <span className="text-xs text-muted-foreground float-right">{new Date(sim.created_at).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       
-      {/* Simulation Dialog with horizontal carousel for steps */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => {
         setIsDialogOpen(open);
         if (!open) {
-          setSimulationId(undefined);
+          setSelectedScenario(null);
+          setCurrentSimulation(null);
         }
       }}>
-        <DialogContent className="sm:max-w-[90%] max-h-[90vh] overflow-y-auto">
-          <DialogHeader className="flex flex-row items-center justify-between">
+        <DialogContent className="sm:max-w-[90%] md:max-w-[70%] lg:max-w-[60%] max-h-[90vh] overflow-y-auto p-0 rounded-2xl">
+          <DialogHeader className="flex flex-row items-center justify-between p-6 border-b">
             <DialogTitle className="text-xl font-semibold">
               {selectedScenario ? selectedScenario.name : 'Simulation Engine'}
             </DialogTitle>
             <div className="flex items-center space-x-2">
-              {[0, 1, 2].map((step) => (
+              {[0, 1, 2].map((stepIndex) => (
                 <Badge 
-                  key={step} 
-                  variant={activeStep === step ? "default" : "outline"}
-                  className={`
-                    px-3 py-1 cursor-pointer
-                    ${activeStep === step ? '' : 'opacity-50'}
-                    ${step > 0 && !simulationResult ? 'pointer-events-none opacity-30' : ''}
-                  `}
+                  key={stepIndex} 
+                  variant={activeStep === stepIndex ? "default" : "outline"}
+                  className={`px-3 py-1 cursor-pointer ${activeStep === stepIndex ? '' : 'opacity-60'}
+                              ${stepIndex > 0 && !currentSimulation ? 'pointer-events-none opacity-30' : ''}`}
                   onClick={() => {
-                    if (step === 0 || simulationResult) {
-                      setActiveStep(step);
+                    if (carouselApi && (stepIndex === 0 || currentSimulation)) {
+                      setActiveStep(stepIndex);
+                      carouselApi.scrollTo(stepIndex);
                     }
                   }}
                 >
-                  {getStepName(step)}
+                  {getStepName(stepIndex)}
                 </Badge>
               ))}
             </div>
           </DialogHeader>
           
-          <div className="py-4">
+          <div className="p-6">
             {selectedScenario ? (
-              <div className="relative">
-                <Carousel 
-                  className="w-full"
-                  opts={{ 
-                    loop: false, 
-                    align: "start",
-                    containScroll: "trimSnaps" 
-                  }}
-                  setApi={(api) => {
-                    // Manually control the carousel based on activeStep
-                    if (api) {
-                      api.scrollTo(activeStep);
-                    }
-                  }}
-                >
-                  <CarouselContent>
-                    {/* Step 1: Parameters */}
-                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Simulation Parameters</h3>
-                        <p className="text-muted-foreground mb-6">{selectedScenario.description}</p>
-                        
-                        <ScenarioForm 
-                          scenarioType={selectedScenario.type}
-                          onSubmit={handleRunSimulation}
-                          isSubmitting={isSubmitting}
-                        />
-                      </div>
-                    </CarouselItem>
-                    
-                    {/* Step 2: Results */}
-                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Simulation Results</h3>
-                        {!simulationResult ? (
-                          isConnected ? (
-                            <div className="p-8 text-center">
-                              <p className="text-muted-foreground mb-2">Simulation in progress...</p>
-                              <div className="flex justify-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="p-8 text-center">
-                              <p className="text-muted-foreground">Run a simulation to see results</p>
-                            </div>
-                          )
+              <Carousel setApi={setCarouselApi} className="w-full" opts={{ align: "start", draggable: false }}>
+                <CarouselContent>
+                  {/* Pane 1: Parameters */}
+                  <CarouselItem className="min-h-[400px]"> {/* Ensure items have enough height */}
+                    <h3 className="text-lg font-medium mb-1">Simulation Parameters</h3>
+                    <p className="text-muted-foreground mb-4 text-sm">{selectedScenario.description}</p>
+                    <ScenarioForm 
+                      scenarioType={selectedScenario.type}
+                      onSubmit={handleRunSimulation}
+                      isSubmitting={isSubmitting}
+                    />
+                  </CarouselItem>
+                  
+                  {/* Pane 2: Projected Outputs */}
+                  <CarouselItem className="min-h-[400px]">
+                    <h3 className="text-lg font-medium mb-1">Projected Outputs (7-day)</h3>
+                    {!currentSimulation ? (
+                      <div className="p-8 text-center flex flex-col items-center justify-center h-full">
+                        {isSubmitting ? (
+                          <>
+                            <p className="text-muted-foreground mb-2">Simulation in progress...</p>
+                            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+                          </>
                         ) : (
-                          <Suspense fallback={<Skeleton className="w-full h-[400px]" />}>
-                            <SimulationResults result={simulationResult} />
-                          </Suspense>
+                           <p className="text-muted-foreground">Run simulation to see projected outputs.</p>
                         )}
                       </div>
-                    </CarouselItem>
-                    
-                    {/* Step 3: Drift Correction */}
-                    <CarouselItem className="pt-2 md:basis-full lg:basis-full">
-                      <div>
-                        <h3 className="text-lg font-medium mb-3">Drift Correction</h3>
-                        {!simulationResult ? (
-                          <div className="p-8 text-center">
-                            <p className="text-muted-foreground">Complete simulation to see correction options</p>
-                          </div>
-                        ) : (
-                          <Suspense fallback={<Skeleton className="w-full h-[400px]" />}>
-                            <DriftCorrection result={simulationResult} />
-                          </Suspense>
-                        )}
+                    ) : (
+                      <Suspense fallback={<Skeleton className="w-full h-[300px]" />}>
+                        <div className="h-[300px] w-full mt-4">
+                           <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={getChartData(currentSimulation)}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="day" />
+                              <YAxis />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Bar dataKey="health" fill="#82ca9d" name="Health Delta" />
+                              <Bar dataKey="wealth" fill="#8884d8" name="Wealth Delta" />
+                              <Bar dataKey="psychology" fill="#ffc658" name="Psychology Delta" />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="mt-4 p-2 bg-muted rounded-md text-sm">
+                            <p><strong>Health Delta:</strong> {currentSimulation.health_delta?.toFixed(2)}</p>
+                            <p><strong>Wealth Delta:</strong> {currentSimulation.wealth_delta?.toFixed(2)}</p>
+                            <p><strong>Psychology Delta:</strong> {currentSimulation.psychology_delta?.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground mt-1">Created: {new Date(currentSimulation.created_at).toLocaleString()}</p>
+                        </div>
+                      </Suspense>
+                    )}
+                  </CarouselItem>
+                  
+                  {/* Pane 3: Actions */}
+                  <CarouselItem className="min-h-[400px]">
+                    <h3 className="text-lg font-medium mb-1">Take Action</h3>
+                    {!currentSimulation ? (
+                      <div className="p-8 text-center h-full flex items-center justify-center">
+                        <p className="text-muted-foreground">Run simulation to enable actions.</p>
                       </div>
-                    </CarouselItem>
-                  </CarouselContent>
-                </Carousel>
-                
-                <div className="flex justify-between mt-6">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
-                    disabled={activeStep === 0}
-                    className="flex items-center gap-1"
-                  >
-                    <ArrowLeft size={16} /> Back
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Close
-                  </Button>
-                  
-                  <Button
-                    variant={activeStep === 2 ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      if (activeStep < 2) {
-                        if (activeStep === 0) {
-                          // User clicked Next on first step, prompt to run simulation
-                          toast({
-                            title: "Run Simulation",
-                            description: "Please fill the form and run the simulation first.",
-                          });
-                        } else {
-                          setActiveStep(activeStep + 1);
-                        }
-                      } else {
-                        // Last step, apply to clarity hub
-                        handleApplyToClarityHub();
-                      }
-                    }}
-                    disabled={activeStep === 1 && !simulationResult}
-                    className="flex items-center gap-1"
-                  >
-                    {activeStep === 2 ? "Apply to Clarity Hub" : "Next"} <ArrowRight size={16} />
-                  </Button>
-                </div>
-              </div>
+                    ) : (
+                      <div className="space-y-4 mt-4">
+                        <Button onClick={handleApplyToClarityHub} className="w-full" variant="default">
+                          <Zap size={16} className="mr-2"/> Apply to Clarity Hub
+                        </Button>
+                        <Button onClick={handleTriggerDriftCorrection} className="w-full" variant="outline">
+                          <BarChart3 size={16} className="mr-2"/> Trigger Drift Correction
+                        </Button>
+                         {/* Placeholder for DriftCorrection component if needed */}
+                         {/* <Suspense fallback={<Skeleton className="w-full h-[200px]" />}>
+                           <DriftCorrection result={currentSimulation} />
+                         </Suspense> */}
+                      </div>
+                    )}
+                  </CarouselItem>
+                </CarouselContent>
+              </Carousel>
             ) : (
               <div className="text-center p-8">
                 <p>Select a scenario to run a simulation</p>
               </div>
             )}
           </div>
+          <div className="flex justify-between items-center p-6 border-t sticky bottom-0 bg-background/80 backdrop-blur-sm rounded-b-2xl">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => carouselApi?.scrollPrev()}
+                disabled={!carouselApi?.canScrollPrev() || activeStep === 0}
+              > <ArrowLeft size={16} className="mr-1" /> Back </Button>
+              
+              <Button variant="ghost" size="sm" onClick={() => setIsDialogOpen(false)}> Close </Button>
+              
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (activeStep === 0 && !isSubmitting) { // On Parameters step, "Next" means run (handled by form's submit)
+                     toast({ title: "Info", description: "Please fill the form and click 'Run Simulation' button inside the form."});
+                  } else if (activeStep < 2 && currentSimulation) {
+                    carouselApi?.scrollNext();
+                  } else if (activeStep === 2) {
+                    handleApplyToClarityHub(); // Or another primary action for the last step
+                  }
+                }}
+                disabled={ (activeStep === 0 && isSubmitting) || (activeStep > 0 && !currentSimulation) || !carouselApi?.canScrollNext() && activeStep !==2}
+              > {activeStep === 2 ? "Apply All" : "Next"} <ArrowRight size={16} className="ml-1" /> </Button>
+            </div>
         </DialogContent>
       </Dialog>
     </LifeCard>

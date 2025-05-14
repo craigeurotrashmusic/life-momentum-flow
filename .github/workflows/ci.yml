@@ -3,12 +3,12 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, feature/** ] # Include feature branches
   pull_request:
     branches: [ main ]
 
 jobs:
-  build:
+  build_and_test: # Renamed job for clarity
     runs-on: ubuntu-latest
     
     steps:
@@ -17,7 +17,7 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '18' # Or your project's Node version
         cache: 'npm'
     
     - name: Install dependencies
@@ -27,7 +27,24 @@ jobs:
       run: npx tsc --noEmit
     
     - name: Lint
-      run: npx eslint --config eslint.config.js "src/**/*.{js,ts,tsx}"
+      run: npx eslint --config eslint.config.js "src/**/*.{js,ts,tsx}" # Ensure your eslint config is correct
     
-    - name: Build
+    - name: Run Unit & Integration Tests (Vitest/Jest - Placeholder)
+      run: echo "Running unit and integration tests..." # Replace with actual test command e.g., npm test or npm run test:unit
+      # Example: npm run test:unit
+      # Example: npm run test:integration
+
+    - name: Build Storybook (Placeholder)
+      run: echo "Building Storybook..." # Replace with actual Storybook build command e.g., npm run build-storybook
+      # Example: npm run build-storybook
+      
+    - name: Build Project
       run: npm run build
+
+    # Placeholder for E2E tests if you add Cypress later
+    # - name: Run E2E Tests (Cypress - Placeholder)
+    #   if: github.event_name == 'pull_request' # Optionally run E2E only on PRs
+    #   run: |
+    #     echo "Running E2E tests..."
+    #     # npm install -g cypress # if not a dev dependency
+    #     # npm run cypress:run
