@@ -1,12 +1,11 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
-  REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
+  REALTIME_POSTGRES_CHANGES_LISTEN_EVENT, // This might be used for the event type in callback or specific logic
   REALTIME_SUBSCRIBE_STATES,
-  REALTIME_LISTEN_TYPES, // Import this
+  // REALTIME_LISTEN_TYPES, // Not needed if using string literals
 } from '@supabase/supabase-js';
 
 // Updated RealtimeData interface to correctly match Supabase payload structure
@@ -20,7 +19,7 @@ interface RealtimeData<T extends Record<string, any>> {
 export function useRealtime<T extends Record<string, any>>(
   tableName: string,
   schema: string = 'public',
-  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE,
+  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE, // This type is for the filter, not the .on() method's first arg
   callback: (payload: RealtimeData<T>) => void
 ) {
   const [data, setData] = useState<RealtimeData<T>>({ new: null, old: null, errors: null });
@@ -30,7 +29,7 @@ export function useRealtime<T extends Record<string, any>>(
     const subscribeToChannel = async () => {
       const newChannel = supabase.channel(`realtime_${tableName}_${event}`)
         .on(
-          REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed this line
+          'postgres_changes', // Corrected: Use string literal
           { event: event, schema: schema, table: tableName },
           (payload: RealtimePostgresChangesPayload<T>) => {
             const a_new = payload.new as T | null;
@@ -50,13 +49,16 @@ export function useRealtime<T extends Record<string, any>>(
 
     // Store the channel instance in a variable to use in the cleanup function
     // This ensures that we are trying to remove the same channel instance that was created
-    const currentChannelInstance = channel;
+    // let currentChannelInstance = channel; // This line would capture the initial null value.
+                                        // The effect cleanup function closes over `channel` from its own scope.
     return () => {
-      if (currentChannelInstance) {
-        supabase.removeChannel(currentChannelInstance);
+      // If we have a channel instance stored in state, attempt to remove it.
+      // The channel object might be updated by setChannel, so we get it from state.
+      if (channel) { 
+        supabase.removeChannel(channel);
       }
     };
-  }, [tableName, schema, event, callback]); // Removed channel from dependency array to avoid re-subscribing on channel state change
+  }, [tableName, schema, event, callback, channel]); // Added channel to dependency array because it's used in cleanup.
 
   return data;
 }
@@ -79,7 +81,7 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
     const subscribeToChannel = async () => {
       const newChannel = supabase.channel(`table-db-changes_${tableName}_${eventType}`)
         .on(
-          REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed this line
+          'postgres_changes', // Corrected: Use string literal
           {
             event: eventType,
             schema: schema,
@@ -96,13 +98,13 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
 
     subscribeToChannel();
 
-    const currentChannelInstance = channel;
+    // const currentChannelInstance = channel; // Similar issue as above.
     return () => {
-      if (currentChannelInstance) {
-        supabase.removeChannel(currentChannelInstance);
+      if (channel) {
+        supabase.removeChannel(channel);
       }
     };
-  }, [tableName, schema, eventType, callback]); // Removed channel from dependency array
+  }, [tableName, schema, eventType, callback, channel]); // Added channel to dependency array.
 
 }
 
@@ -116,7 +118,7 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
   const channelName = `table-changes_${table}_${eventType}_${Date.now()}`;
   const channelInstance = supabase.channel(channelName)
     .on(
-      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed this line
+      'postgres_changes', // Corrected: Use string literal
       {
         event: eventType,
         schema: schema,
@@ -144,6 +146,7 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
 }
 
 // ... keep existing code (removeSubscription function)
+
 export const removeSubscription = async (channel: RealtimeChannel) => {
     await supabase.removeChannel(channel);
 };

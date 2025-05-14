@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, Play, Pause, RotateCcw, CheckCircle, BarChart, Send, Star, ThumbsUp, ThumbsDown, CalendarClock, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,6 +18,8 @@ import {
   FocusSessionInsert,
 } from '@/lib/api/focus';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseClient'; // Added supabase import
+import { cn } from "@/lib/utils"; // Added cn import
 
 // Default duration options in minutes
 const DURATION_OPTIONS = [15, 25, 45]; // Custom will be handled by an input
@@ -81,7 +82,16 @@ const FocusCard = () => {
         });
       });
       return () => {
-        supabase.removeChannel(channel);
+        // Check if supabase and removeChannel are available before calling
+        if (supabase && typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(channel).then((status) => {
+            console.log('Channel removal status:', status);
+          }).catch(error => {
+            console.error('Error removing channel:', error);
+          });
+        } else {
+          console.warn('Supabase client or removeChannel method not available for cleanup.');
+        }
       };
     }
   }, [user?.id]);
@@ -497,4 +507,3 @@ const FocusCard = () => {
 };
 
 export default FocusCard;
-
