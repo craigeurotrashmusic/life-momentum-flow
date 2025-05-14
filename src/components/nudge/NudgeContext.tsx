@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/hooks/useAuth';
-import { useIsMobile } from '@/hooks/use-mobile'; // Correct import for the hook
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Nudge,
   FlowPeriod,
@@ -116,22 +116,32 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(() => {
     const localPrefs = localStorage.getItem('userPreferences');
-    return localPrefs ? JSON.parse(localPrefs) : defaultUserPreferences;
+    // Ensure default structure if localPrefs are incomplete or malformed
+    try {
+        const parsedPrefs = localPrefs ? JSON.parse(localPrefs) : {};
+        return { ...defaultUserPreferences, ...parsedPrefs, userId: parsedPrefs.userId || user?.id };
+    } catch (e) {
+        console.error("Failed to parse user preferences from localStorage", e);
+        return { ...defaultUserPreferences, userId: user?.id };
+    }
   });
   
-  const isMobile = useIsMobile(); // Correctly using the imported hook
-  
-  const { nudgeFrequency, notificationChannels, quietHours } = userPreferences;
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (user && !userPreferences.userId) {
       setUserPreferences(prev => ({ ...prev, userId: user.id }));
+      fetchUserPreferences(); // Fetch after userId is set
+    } else if (user && userPreferences.userId && user.id !== userPreferences.userId) {
+      // Handle user change if necessary, e.g., re-fetch or reset preferences
+      setUserPreferences(prev => ({ ...defaultUserPreferences, userId: user.id }));
       fetchUserPreferences();
+    } else if (userPreferences.userId && !userPreferences.isLoading) { // Check if userId exists before fetching
+        fetchUserPreferences();
     }
-  }, [user, userPreferences.userId]);
+  }, [user]); // Removed userPreferences.userId from dependency array to avoid loop, fetchUserPreferences is memoized
 
   useEffect(() => {
-    // Simulate emotional state changes interval
     const emotionalInterval = setInterval(() => {
       const randomState = emotionalStates[Math.floor(Math.random() * emotionalStates.length)];
       setEmotionalState(randomState);
@@ -139,7 +149,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
       const newEnergy = Math.max(30, Math.min(100, energyLevel + Math.floor(Math.random() * 20) - 10));
       setEnergyLevel(newEnergy);
       
-      const isQuiet = checkIfQuietHours(userPreferences.quietHours); // Use userPreferences.quietHours
+      const isQuiet = checkIfQuietHours(userPreferences.quietHours);
       
       if (!nudgesMuted && !isNudgeVisible && !isQuiet && Math.random() < (userPreferences.nudgeFrequency / 20)) {
         generatePersonalizedNudge({ 
@@ -150,32 +160,27 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         }).then(nudge => {
           if (nudge) {
             setNudges(prev => [...prev, nudge]);
-            if (userPreferences.notificationChannels.inApp) { // Use userPreferences
-              // Trigger nudge if inApp notifications are enabled
+            if (userPreferences.notificationChannels.inApp) {
               const sortedNudges = [...nudges, nudge].sort((a, b) => b.priority - a.priority);
               const selectedNudge = sortedNudges[0];
               setActivatedNudge(selectedNudge);
               setIsNudgeVisible(true);
               setNudges(prev => prev.filter(n => n.id !== selectedNudge.id));
             }
-          } else {
-            // toast.error("Could not generate a new nudge right now."); // Optionally toast
           }
         });
       }
     }, 30000);
     
     return () => clearInterval(emotionalInterval);
-  }, [nudgesMuted, isNudgeVisible, emotionalState, energyLevel, flowPeriods, nudgeHistory, userPreferences]);
+  }, [nudgesMuted, isNudgeVisible, emotionalState, energyLevel, flowPeriods, nudgeHistory, userPreferences.quietHours, userPreferences.nudgeFrequency, userPreferences.notificationChannels.inApp, nudges]);
   
-  // Save user preferences to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('userPreferences', JSON.stringify(userPreferences));
   }, [userPreferences]);
   
-  // Check if current time is within quiet hours
   const checkIfQuietHours = (currentQuietHours: QuietHours) => {
-    if (!currentQuietHours.enabled) return false;
+    if (!currentQuietHours?.enabled) return false; // Add null check for currentQuietHours
     
     const now = new Date();
     const currentHour = now.getHours();
@@ -186,7 +191,6 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     return currentTimeStr >= currentQuietHours.start && currentTimeStr <= currentQuietHours.end;
   };
   
-  // Function to trigger a nudge
   const triggerNudge = (customMessage?: string) => {
     if (nudgesMuted) {
       toast.info("Nudges are currently muted.");
@@ -230,7 +234,6 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Function to dismiss the current nudge
   const dismissNudge = () => {
     if (activatedNudge) {
       // Add to history
@@ -246,7 +249,6 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     setTimeout(() => setActivatedNudge(null), 300); // Delay clearing for animation
   };
   
-  // Function to snooze the current nudge
   const snoozeNudge = () => {
     if (activatedNudge) {
       // Add back to queue with reduced priority
@@ -269,7 +271,6 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
   
-  // Toggle nudge muting
   const toggleNudgeMute = () => {
     setNudgesMuted(prevMuted => {
       const newMutedState = !prevMuted;
@@ -283,78 +284,77 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     });
   };
   
-  // Update nudge frequency
   const setNudgeFrequency = (frequency: number) => {
     setUserPreferences(prev => ({ ...prev, nudgeFrequency: frequency }));
   };
   
-  // Toggle notification channel
   const toggleNotificationChannel = (channel: NotificationChannel) => { // Typed channel
     setUserPreferences(prev => {
+      const currentChannels = prev.notificationChannels || defaultUserPreferences.notificationChannels;
+      const currentIntegrations = prev.integrations || defaultUserPreferences.integrations;
+
       if (channel === 'googleCalendar' || channel === 'googleTasks') {
         return {
           ...prev,
           integrations: {
-            ...prev.integrations,
-            [channel]: !prev.integrations[channel]
+            ...currentIntegrations,
+            [channel]: !currentIntegrations[channel]
           }
         };
       }
       return {
         ...prev,
         notificationChannels: {
-          ...prev.notificationChannels,
-          [channel]: !prev.notificationChannels[channel]
+          ...currentChannels,
+          [channel]: !currentChannels[channel]
         }
       };
     });
   };
   
-  // Set quiet hours
   const setQuietHours = (newQuietHours: Partial<QuietHours>) => { // Changed parameter to Partial<QuietHours>
     setUserPreferences(prev => ({
       ...prev,
       quietHours: {
-        ...prev.quietHours,
+        ...(prev.quietHours || defaultUserPreferences.quietHours),
         ...newQuietHours // Spread partial updates
       }
     }));
   };
   
-  // For the Supabase calls that are causing TypeScript errors, replace them with safer implementations
   const fetchUserPreferences = useCallback(async () => {
-    if (!userPreferences.userId) {
+    if (!userPreferences.userId) { // Check if userId from state is available
+      // toast.info("User ID not available for fetching preferences."); // Optional: inform user
       return;
     }
     
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
     
     try {
-      // Use a safer approach for the Supabase query
-      // @ts-ignore - Temporarily ignore TypeScript errors for this part
       const { data, error } = await supabase
-        .from('user_preferences')
+        .from('user_preferences') // This should now be correctly typed
         .select('*')
-        .eq('user_id', userPreferences.userId)
-        .single();
+        .eq('user_id', userPreferences.userId) // Use userId from state
+        .maybeSingle(); // Use maybeSingle to handle no row found gracefully
       
       if (data) {
-        setUserPreferences(prev => ({ ...prev, ...data, isLoading: false }));
-      } else if (error && error.code !== 'PGRST116') {
+        // Merge fetched data with defaults to ensure all fields are present
+        setUserPreferences(prev => ({ ...defaultUserPreferences, ...prev, ...data, userId: userPreferences.userId, isLoading: false }));
+      } else if (error) { // Removed check for error.code !== 'PGRST116' as maybeSingle handles it
         toast.error(`Failed to fetch user preferences: ${error.message}`);
         console.error('Failed to fetch user preferences:', error);
         setUserPreferences(prev => ({ ...prev, isLoading: false }));
       } else {
-        setUserPreferences(prev => ({ ...prev, isLoading: false }));
+        // No data found, ensure defaults are set (especially if it's a new user)
+        setUserPreferences(prev => ({ ...defaultUserPreferences, userId: userPreferences.userId, isLoading: false }));
       }
     } catch (error: any) {
       toast.error(`Failed to fetch user preferences: ${error.message}`);
       console.error('Failed to fetch user preferences:', error);
       setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userPreferences.userId]);
+  }, [userPreferences.userId]); // Depend on userId from state
 
-  // Fix the saveUserPreferences function similarly
   const saveUserPreferences = async (): Promise<void> => {
     if (!userPreferences.userId) {
       toast.error("User ID not available. Cannot save preferences.");
@@ -363,20 +363,27 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
     
+    const preferencesToSave = {
+      ...userPreferences,
+      user_id: userPreferences.userId, // Ensure user_id is included for Supabase
+    };
+    // Remove client-side only flags like isLoading before saving
+    delete (preferencesToSave as any).isLoading; 
+
+
     try {
-      // @ts-ignore - Temporarily ignore TypeScript errors for this part
       const { error } = await supabase
-        .from('user_preferences')
-        .upsert({ 
-          ...userPreferences, 
-          user_id: userPreferences.userId 
-        });
+        .from('user_preferences') // This should now be correctly typed
+        .upsert(preferencesToSave);
 
       if (error) {
         toast.error(`Failed to save preferences: ${error.message}`);
         console.error('Failed to save preferences:', error);
       } else {
         toast.success("Preferences saved successfully!");
+        // Fetch preferences again to ensure context is aligned with DB, or merge locally
+        // For simplicity, local merge assumed by successful save.
+        setUserPreferences(prev => ({ ...prev, ...preferencesToSave, isLoading: false }));
       }
     } catch (error: any) {
       toast.error(`Failed to save preferences: ${error.message}`);
@@ -386,36 +393,30 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Add a new nudge to the queue
   const addNudge = (nudge: Nudge) => {
     setNudges(prev => [...prev, nudge]);
   };
 
-  // Clear all nudges from the queue
   const clearNudges = () => {
     setNudges([]);
   };
 
-  // Log a nudge event
   const logNudgeEvent = (event: NudgeEvent) => {
     console.log("Nudge event logged:", event);
     // Implement event logging logic here, e.g., send to backend or analytics
   };
 
-  // Update flow state
   const updateFlowState = (key: keyof FlowStateData, value: any) => {
     console.log("Updating flow state:", key, value);
     // Implement flow state update logic here
   };
 
-  // Add an emotional state to the history
   const addEmotionalState = (state: EmotionalState) => {
     console.log("Adding emotional state:", state);
     // Implement emotional state history update logic here
   };
 
-  // Check if preferences are loading
-  const isLoadingPreferences = !!userPreferences.isLoading; // Ensure boolean
+  const isLoadingPreferences = !!userPreferences.isLoading;
 
   return (
     <NudgeContext.Provider
@@ -433,17 +434,17 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         userPreferences,
         saveUserPreferences,
         fetchUserPreferences,
-        lastNudgeEvent: null,
+        lastNudgeEvent: null, 
         logNudgeEvent,
         nudgeHistory,
-        flowState: {
+        flowState: { // Provide a default/initial flow state
           intensity: 0,
           startTime: null,
           endTime: null,
           active: false,
         },
         updateFlowState,
-        emotionalStateHistory: [],
+        emotionalStateHistory: [], // Provide a default/initial emotional state history
         addEmotionalState,
         isLoadingPreferences,
         activatedNudge,
@@ -467,4 +468,28 @@ export const useNudge = () => {
     throw new Error('useNudge must be used within a NudgeProvider');
   }
   return context;
+};
+
+// Placed defaultUserPreferences inside NudgeProvider or ensure it's correctly scoped if used within fetch/save directly.
+// For broader use within the file, define it at the top level or pass as needed.
+const defaultUserPreferences: UserPreferences = {
+  userId: undefined,
+  nudgeFrequency: 3,
+  notificationChannels: {
+    inApp: true,
+    push: true,
+    email: false,
+    googleCalendar: false,
+    googleTasks: false,
+  },
+  quietHours: {
+    start: "22:00",
+    end: "07:00",
+    enabled: true
+  },
+  integrations: {
+    googleCalendar: false,
+    googleTasks: false
+  },
+  isLoading: false,
 };

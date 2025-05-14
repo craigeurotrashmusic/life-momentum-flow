@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNudge } from '../nudge/NudgeContext';
-import { UserPreferences, NotificationChannel, QuietHours } from '../nudge/types'; // Import UserPreferences
+import { UserPreferences, NotificationChannel, QuietHours } from '../nudge/types';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { toast } from '@/components/ui/sonner';
-import TimeRangePicker from '../nudge/TimeRangePicker'; // Assuming this component exists and is correctly implemented
+import { TimeRangePicker } from '../nudge/TimeRangePicker';
 
 const SettingsSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <div className="py-4 border-b border-border/50 last:border-b-0">
@@ -23,7 +23,6 @@ const channelLabels: Record<NotificationChannel, string> = {
   googleTasks: "Google Tasks Integration",
 };
 
-
 const SettingsCard = () => {
   const {
     userPreferences,
@@ -33,6 +32,29 @@ const SettingsCard = () => {
     saveUserPreferences,
     isLoadingPreferences,
   } = useNudge();
+
+  // Default user preferences to ensure structure if parts are missing
+  const defaultUserPreferences: UserPreferences = {
+    userId: undefined,
+    nudgeFrequency: 3,
+    notificationChannels: {
+      inApp: true,
+      push: true,
+      email: false,
+      googleCalendar: false,
+      googleTasks: false,
+    },
+    quietHours: {
+      start: "22:00",
+      end: "07:00",
+      enabled: true
+    },
+    integrations: {
+      googleCalendar: false,
+      googleTasks: false
+    },
+    isLoading: false,
+  };
 
   // Local state for unsaved changes, initialized from context
   // This helps manage edits before saving
@@ -49,8 +71,15 @@ const SettingsCard = () => {
 
   const handleChannelToggle = (channel: NotificationChannel) => {
     setLocalPreferences(prev => {
-      const currentChannels = prev.notificationChannels || {};
+      const currentChannels = prev.notificationChannels || {
+        inApp: false,
+        push: false,
+        email: false,
+        googleCalendar: false,
+        googleTasks: false,
+      };
       const currentIntegrations = prev.integrations || { googleCalendar: false, googleTasks: false };
+      
       if (channel === 'googleCalendar' || channel === 'googleTasks') {
         return {
           ...prev,
@@ -63,7 +92,7 @@ const SettingsCard = () => {
       return {
         ...prev,
         notificationChannels: {
-          ...currentChannels,
+          ...currentChannels, 
           [channel]: !currentChannels[channel]
         }
       };
@@ -74,7 +103,7 @@ const SettingsCard = () => {
     setLocalPreferences(prev => ({
       ...prev,
       quietHours: {
-        ...prev.quietHours,
+        ...(prev.quietHours || { start: "22:00", end: "07:00", enabled: false }),
         [part]: value,
       }
     }));
@@ -83,29 +112,38 @@ const SettingsCard = () => {
   const handleTimeRangeChange = (start: string, end: string) => {
     setLocalPreferences(prev => ({
       ...prev,
-      quietHours: { ...prev.quietHours, start, end }
+      quietHours: { 
+        ...(prev.quietHours || { start: "22:00", end: "07:00", enabled: false }),
+        start, 
+        end 
+      }
     }));
   };
 
   const handleSave = async () => {
     // Apply local changes to context
     setNudgeFrequency(localPreferences.nudgeFrequency);
-    (Object.keys(localPreferences.notificationChannels) as NotificationChannel[]).forEach(key => {
-        if (localPreferences.notificationChannels[key] !== userPreferences.notificationChannels[key]) {
-            toggleNotificationChannel(key);
-        }
-    });
-    (Object.keys(localPreferences.integrations) as Extract<NotificationChannel, 'googleCalendar' | 'googleTasks'>[]).forEach(key => {
-        if (localPreferences.integrations[key] !== userPreferences.integrations[key]) {
-            toggleNotificationChannel(key);
-        }
-    });
-    setQuietHours(localPreferences.quietHours);
     
-    // Then call the save function from context which now uses the context's state
+    // Ensure notificationChannels and integrations are not undefined before iterating
+    const prefChannels = localPreferences.notificationChannels || defaultUserPreferences.notificationChannels;
+    const userPrefChannels = userPreferences.notificationChannels || defaultUserPreferences.notificationChannels;
+    (Object.keys(prefChannels) as NotificationChannel[]).forEach(key => {
+        if (prefChannels[key] !== userPrefChannels[key]) {
+            toggleNotificationChannel(key);
+        }
+    });
+
+    const prefIntegrations = localPreferences.integrations || defaultUserPreferences.integrations;
+    const userPrefIntegrations = userPreferences.integrations || defaultUserPreferences.integrations;
+    (Object.keys(prefIntegrations) as Extract<NotificationChannel, 'googleCalendar' | 'googleTasks'>[]).forEach(key => {
+        if (prefIntegrations[key] !== userPrefIntegrations[key]) {
+            toggleNotificationChannel(key); // toggleNotificationChannel handles both types
+        }
+    });
+    setQuietHours(localPreferences.quietHours || defaultUserPreferences.quietHours);
+    
     await saveUserPreferences();
   };
-
 
   return (
     <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border/20">
@@ -132,7 +170,11 @@ const SettingsCard = () => {
             <Label htmlFor={String(channel)} className="text-sm text-foreground">{channelLabels[channel]}</Label> {/* Ensure ID is string */}
             <Switch
               id={String(channel)} // Ensure ID is string
-              checked={(channel === 'googleCalendar' || channel === 'googleTasks') ? !!localPreferences.integrations?.[channel] : !!localPreferences.notificationChannels?.[channel]}
+              checked={
+                (channel === 'googleCalendar' || channel === 'googleTasks') 
+                ? !!localPreferences.integrations?.[channel] 
+                : !!localPreferences.notificationChannels?.[channel]
+              }
               onCheckedChange={() => handleChannelToggle(channel)}
               disabled={isLoadingPreferences}
             />
@@ -154,7 +196,7 @@ const SettingsCard = () => {
            <TimeRangePicker
             startTime={localPreferences.quietHours.start}
             endTime={localPreferences.quietHours.end}
-            onChange={handleTimeRangeChange}
+            onChange={({start, end}) => handleTimeRangeChange(start, end)}
             disabled={isLoadingPreferences}
           />
         )}

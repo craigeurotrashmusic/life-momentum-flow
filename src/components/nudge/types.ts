@@ -1,4 +1,3 @@
-
 export type NudgeType = 'insight' | 'reminder' | 'challenge' | 'motivation';
 export type NotificationChannel = 'inApp' | 'push' | 'email' | 'googleCalendar' | 'googleTasks';
 export type NotificationChannelStatus = boolean;
@@ -15,12 +14,18 @@ export interface FlowPeriod {
   startTime: Date;
   endTime: Date;
   intensity: number;
+  factors?: { // Added factors property
+    focusScore?: number;
+    productivityScore?: number;
+    interruptionCount?: number;
+  };
 }
 
 export interface NudgeHistoryItem {
   nudge: Nudge;
   userResponse: 'accepted' | 'dismissed' | 'snoozed';
   responseTime: Date;
+  timeToRespond?: number; // Added optional timeToRespond
 }
 
 export interface QuietHours {
@@ -72,4 +77,3 @@ export interface EmotionalInsight {
   peakPerformanceTimes: string[]; // e.g., "10:00 AM - 12:00 PM"
   recommendations: string[];
 }
-
