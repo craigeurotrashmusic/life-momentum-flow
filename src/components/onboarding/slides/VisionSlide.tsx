@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { submitVision } from "@/lib/api";
+import { submitVision } from "@/lib/api/onboardingData";
 import { toast } from "@/hooks/use-toast";
 import { SlideProps } from "./types";
 
@@ -24,14 +23,14 @@ const VisionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
   });
 
   const onSubmit = async (data: VisionFormData) => {
-    setIsSubmitting(true);
+    if (setIsSubmitting) setIsSubmitting(true);
     try {
       await submitVision(data);
       toast({
-        title: "Vision saved",
+        title: "Vision saved (Mock)",
         description: "Your vision has been recorded."
       });
-      onNext();
+      if (onNext) onNext();
     } catch (error) {
       toast({
         title: "Error",
@@ -40,7 +39,7 @@ const VisionSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
       });
       console.error("Error submitting vision:", error);
     } finally {
-      setIsSubmitting(false);
+      if (setIsSubmitting) setIsSubmitting(false);
     }
   };
 

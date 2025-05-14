@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { SimulationResult } from '@/lib/api';
+import { SimulationResult } from '@/lib/api/simulation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart";

@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LifeCard from '@/components/cards/LifeCard';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useClarityHub } from '@/contexts/ClarityHubContext';
-import { ClarityPillar } from '@/types/clarity';
-import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info, BarChart, BookOpen } from 'lucide-react';
+import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign, Heart, RefreshCw, Info } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
@@ -24,10 +22,65 @@ const longTermGoals = [
 ];
 
 const ClarityHubCard: React.FC = () => {
-  const { metrics, isLoading, isError, error, refreshMetrics, isRefreshing } = useClarityHub();
+  const [metrics, setMetrics] = useState<ClarityMetrics | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  if (isError) {
+  // TODO: Replace 'mock_user_id' with actual authenticated user ID
+  const userId = 'mock_user_id';
+
+  const loadMetrics = async () => {
+    setIsLoading(true);
+    setIsError(false);
+    setError(null);
+    try {
+      const data = await fetchClarityMetrics(userId);
+      setMetrics(data);
+    } catch (e: any) {
+      setIsError(true);
+      setError(e);
+      console.error("Error loading clarity metrics:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const refreshMetrics = async () => {
+    setIsRefreshing(true);
+    setIsError(false);
+    setError(null);
+    try {
+      const data = await apiRefreshClarityMetrics(userId); // use the aliased import
+      setMetrics(data);
+    } catch (e: any) {
+      setIsError(true);
+      setError(e);
+      console.error("Error refreshing clarity metrics:", e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMetrics();
+
+    const subscription = subscribeToClarityMetricsChanges(userId, (payload) => {
+      console.log('Clarity metrics change received:', payload);
+      // Re-fetch or update metrics based on payload
+      loadMetrics(); // Simple re-fetch for now
+    });
+    
+    return () => {
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe();
+      }
+    };
+  }, [userId]);
+
+  if (isError && !metrics) { // Show error only if there are no metrics to display
     return (
       <LifeCard title="Clarity Hub" icon={<Brain />} color="bg-gradient-to-br from-gray-700 to-gray-800">
         <div className="text-center p-4">
@@ -47,7 +100,7 @@ const ClarityHubCard: React.FC = () => {
   const pillars: ClarityPillar[] = metrics ? [
     { name: 'Health', score: metrics.healthScore, icon: Heart, trend: metrics.healthScore > 70 ? 'up' : metrics.healthScore < 50 ? 'down' : 'stable', unit: '%' },
     { name: 'Wealth', score: metrics.wealthScore, icon: DollarSign, trend: metrics.wealthScore > 70 ? 'up' : metrics.wealthScore < 50 ? 'down' : 'stable', unit: '%' },
-    { name: 'Emotion', score: 100 - metrics.emotionalDrift, icon: Activity, trend: metrics.emotionalDrift < 20 ? 'up' : metrics.emotionalDrift > 40 ? 'down' : 'stable', unit: '%' }, // Inverted for display
+    { name: 'Emotion', score: 100 - metrics.emotionalDrift, icon: Activity, trend: metrics.emotionalDrift < 20 ? 'up' : metrics.emotionalDrift > 40 ? 'down' : 'stable', unit: '%' },
     { name: 'Flow', score: metrics.flowIndex, icon: Zap, trend: metrics.flowIndex > 70 ? 'up' : metrics.flowIndex < 50 ? 'down' : 'stable', unit: '%' },
     { name: 'Sim Impact', score: Math.round((metrics.simulationImpact.healthDelta + metrics.simulationImpact.wealthDelta + metrics.simulationImpact.psychologyDelta)/3), icon: Brain, trend: 'stable', unit: 'pts' },
   ] : [];
@@ -95,7 +148,7 @@ const ClarityHubCard: React.FC = () => {
             </div>
             <Skeleton className="h-10 w-full rounded-lg" />
           </div>
-        ) : (
+        ) : metrics && ( // Ensure metrics is not null before rendering content
           <>
             {/* Overall Clarity Score Section */}
             <div className="text-center mb-6">
@@ -145,9 +198,9 @@ const ClarityHubCard: React.FC = () => {
             )}
             
             <div className="mt-6 flex justify-between items-center">
-                <Button variant="ghost" size="sm" onClick={refreshMetrics} disabled={isRefreshing}>
-                    <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    {isRefreshing ? 'Refreshing...' : 'Refresh Now'}
+                <Button variant="ghost" size="sm" onClick={refreshMetrics} disabled={isRefreshing || isLoading}>
+                    <RefreshCw className={`mr-2 h-4 w-4 ${(isRefreshing || isLoading) ? 'animate-spin' : ''}`} />
+                    {(isRefreshing || isLoading) ? 'Refreshing...' : 'Refresh Now'}
                 </Button>
                 <Button variant="default" size="sm" onClick={() => setIsDialogOpen(true)}>
                     View Details

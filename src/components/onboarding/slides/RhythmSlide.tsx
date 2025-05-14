@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { submitRhythm } from "@/lib/api";
+import { submitRhythm } from "@/lib/api/onboardingData";
 import { toast } from "@/hooks/use-toast";
 import { 
   Select, 
@@ -32,14 +31,14 @@ const RhythmSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
   });
 
   const onSubmit = async (data: RhythmFormData) => {
-    setIsSubmitting(true);
+    if (setIsSubmitting) setIsSubmitting(true);
     try {
       await submitRhythm(data);
       toast({
-        title: "Daily rhythm saved",
+        title: "Daily rhythm saved (Mock)",
         description: "Your daily rhythm has been recorded."
       });
-      onNext();
+      if (onNext) onNext();
     } catch (error) {
       toast({
         title: "Error",
@@ -48,7 +47,7 @@ const RhythmSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
       });
       console.error("Error submitting daily rhythm:", error);
     } finally {
-      setIsSubmitting(false);
+      if (setIsSubmitting) setIsSubmitting(false);
     }
   };
 

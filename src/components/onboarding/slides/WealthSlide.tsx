@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChevronRight } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
-import { submitWealth } from "@/lib/api";
+import { submitWealthProfile } from "@/lib/api/wealth";
 import { toast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
 import { SlideProps } from "./types";
@@ -43,14 +42,14 @@ const WealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
   });
 
   const onSubmit = async (data: WealthFormData) => {
-    setIsSubmitting(true);
+    if (setIsSubmitting) setIsSubmitting(true);
     try {
-      await submitWealth(data);
+      await submitWealthProfile(data);
       toast({
-        title: "Financial profile saved",
+        title: "Financial profile saved (Mock)",
         description: "Your financial profile has been recorded.",
       });
-      onNext();
+      if (onNext) onNext();
     } catch (error) {
       toast({
         title: "Error",
@@ -59,7 +58,7 @@ const WealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
       });
       console.error("Error submitting financial profile:", error);
     } finally {
-      setIsSubmitting(false);
+      if (setIsSubmitting) setIsSubmitting(false);
     }
   };
 
@@ -147,7 +146,7 @@ const WealthSlide = ({ onNext, isSubmitting, setIsSubmitting }: SlideProps) => {
                     step={100}
                     {...field}
                     value={field.value}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                   />
                 )}
               />
