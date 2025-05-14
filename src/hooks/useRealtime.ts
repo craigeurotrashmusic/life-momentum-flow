@@ -1,9 +1,8 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   RealtimeChannel, 
-  REALTIME_LISTEN_TYPES, 
-  REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   RealtimePostgresChangesPayload
 } from '@supabase/supabase-js';
 
@@ -16,7 +15,7 @@ interface RealtimeData<T> {
 export function useRealtime<T>(
   tableName: string,
   schema: string = 'public',
-  event: REALTIME_LISTEN_TYPES = 'UPDATE',
+  event: 'INSERT' | 'UPDATE' | 'DELETE' = 'UPDATE',
   callback: (payload: RealtimeData<T>) => void
 ) {
   const [data, setData] = useState<RealtimeData<T>>({ new: null, old: null, errors: null });
@@ -25,10 +24,14 @@ export function useRealtime<T>(
   useEffect(() => {
     const subscribe = async () => {
       const newChannel = supabase.channel(`realtime_${tableName}`)
-        .on(event, { schema: schema, table: tableName }, (payload) => {
-          setData({ new: payload.new as T, old: payload.old as T, errors: payload.errors });
-          callback({ new: payload.new as T, old: payload.old as T, errors: payload.errors });
-        })
+        .on(
+          'postgres_changes',
+          { event: event, schema: schema, table: tableName },
+          (payload: any) => {
+            setData({ new: payload.new as T, old: payload.old as T, errors: payload.errors });
+            callback({ new: payload.new as T, old: payload.old as T, errors: payload.errors });
+          }
+        )
         .subscribe();
 
       setChannel(newChannel);
@@ -49,7 +52,7 @@ export function useRealtime<T>(
 export function useRealtimePostgresChanges<T = any>(
   tableName: string,
   schema: string = 'public',
-  eventTypes: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT[] = ['INSERT', 'UPDATE', 'DELETE'],
+  eventTypes: Array<'INSERT' | 'UPDATE' | 'DELETE'> = ['INSERT', 'UPDATE', 'DELETE'],
   callback: (payload: RealtimePostgresChangesPayload<T>) => void
 ) {
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
@@ -69,7 +72,7 @@ export function useRealtimePostgresChanges<T = any>(
             schema: schema,
             table: tableName
           }, 
-          (payload) => {
+          (payload: any) => {
             callback(payload as RealtimePostgresChangesPayload<T>);
           }
         )
@@ -92,7 +95,7 @@ export function subscribeToPostgresChanges(
   table: string,
   schema: string = 'public', 
   callback: (payload: any) => void,
-  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT[] = ['INSERT', 'UPDATE', 'DELETE']
+  event: Array<'INSERT' | 'UPDATE' | 'DELETE'> = ['INSERT', 'UPDATE', 'DELETE']
 ) {
   const channel = supabase.channel('table-changes')
     .on(
