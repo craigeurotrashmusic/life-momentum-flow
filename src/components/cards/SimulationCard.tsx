@@ -1,6 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useCallback } from 'react';
 import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft, BarChart3 } from 'lucide-react';
-import type { EmblaOptionsType } from 'embla-carousel-react'; // Import EmblaOptionsType
+import EmblaOptionsType from 'embla-carousel-react'; // Changed import
 import LifeCard from './LifeCard';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
