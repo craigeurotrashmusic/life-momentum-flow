@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Nudge, EmotionalState, FlowPeriod, NudgeHistoryItem, NotificationChannels, QuietHours, UserPreferences } from './types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/sonner';
-import { generatePersonalizedNudge } from './personalization';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/hooks/useAuth';
 
 // Mock nudges for demonstration
 const mockNudges: Nudge[] = [
@@ -104,6 +103,31 @@ const defaultUserPreferences: UserPreferences = {
 
 // Simulated emotional states and detection
 const emotionalStates = ['energized', 'focused', 'neutral', 'distracted', 'tired'];
+
+// Define NudgeContextType
+export interface NudgeContextType {
+  nudges: Nudge[];
+  addNudge: (nudge: Nudge) => void;
+  clearNudges: () => void;
+  triggerNudge: (customMessage?: string) => void;
+  nudgeFrequency: number;
+  setNudgeFrequency: (freq: number) => void;
+  notificationChannels: Record<NotificationChannel, NotificationChannelStatus>;
+  toggleNotificationChannel: (channel: NotificationChannel) => void;
+  quietHours: QuietHours;
+  setQuietHours: (hours: QuietHours) => void;
+  userPreferences: UserPreferences;
+  saveUserPreferences: () => Promise<void>;
+  fetchUserPreferences: () => Promise<void>;
+  lastNudgeEvent: NudgeEvent | null;
+  logNudgeEvent: (event: NudgeEvent) => void;
+  nudgeHistory: NudgeEvent[];
+  flowState: FlowStateData;
+  updateFlowState: (key: keyof FlowStateData, value: any) => void;
+  emotionalStateHistory: EmotionalState[];
+  addEmotionalState: (state: EmotionalState) => void;
+  isLoadingPreferences: boolean;
+}
 
 export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   const [nudges, setNudges] = useState<Nudge[]>([]);
@@ -326,29 +350,81 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Fetch user preferences from supabase
+  const fetchUserPreferences = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', userPreferences.userId)
+        .single();
+      
+      if (data) {
+        setUserPreferences(data);
+      } else if (error) {
+        console.error('Failed to fetch user preferences:', error);
+      }
+    } catch (error) {
+      console.error('Failed to fetch user preferences:', error);
+    }
+  }, [userPreferences.userId]);
+
+  // Add a new nudge to the queue
+  const addNudge = (nudge: Nudge) => {
+    setNudges(prev => [...prev, nudge]);
+  };
+
+  // Clear all nudges from the queue
+  const clearNudges = () => {
+    setNudges([]);
+  };
+
+  // Log a nudge event
+  const logNudgeEvent = (event: NudgeEvent) => {
+    // Implement event logging logic here
+  };
+
+  // Update flow state
+  const updateFlowState = (key: keyof FlowStateData, value: any) => {
+    // Implement flow state update logic here
+  };
+
+  // Add an emotional state to the history
+  const addEmotionalState = (state: EmotionalState) => {
+    // Implement emotional state history update logic here
+  };
+
+  // Check if preferences are loading
+  const isLoadingPreferences = userPreferences.isLoading;
+
   return (
     <NudgeContext.Provider
       value={{
         nudges,
-        activatedNudge,
-        isNudgeVisible,
-        nudgesMuted,
-        emotionalState,
-        energyLevel,
-        nudgeHistory,
-        flowPeriods,
-        nudgeFrequency,
-        notificationChannels,
-        quietHours,
-        userPreferences,
+        addNudge,
+        clearNudges,
         triggerNudge,
-        dismissNudge,
-        snoozeNudge,
-        toggleNudgeMute,
+        nudgeFrequency,
         setNudgeFrequency,
+        notificationChannels,
         toggleNotificationChannel,
+        quietHours,
         setQuietHours,
-        saveUserPreferences
+        userPreferences,
+        saveUserPreferences,
+        fetchUserPreferences,
+        lastNudgeEvent: null,
+        logNudgeEvent,
+        nudgeHistory,
+        flowState: {
+          intensity: 0,
+          startTime: new Date(),
+          endTime: new Date()
+        },
+        updateFlowState,
+        emotionalStateHistory: [],
+        addEmotionalState,
+        isLoadingPreferences
       }}
     >
       {children}
