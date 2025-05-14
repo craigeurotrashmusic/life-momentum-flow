@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -6,6 +7,7 @@ import {
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   REALTIME_SUBSCRIBE_STATES,
   RealtimePostgresChangesFilter,
+  REALTIME_LISTEN_TYPES, // Added import
 } from '@supabase/supabase-js';
 
 interface RealtimeData<T extends Record<string, any>> {
@@ -36,7 +38,7 @@ export function useRealtime<
 
     const newChannel = supabase.channel(channelName)
       .on(
-        'postgres_changes',
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           const a_new = payload.new as T | null;
@@ -89,7 +91,7 @@ export function useRealtimePostgresChanges<
 
     const newChannel = supabase.channel(channelName)
       .on(
-        'postgres_changes',
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           callback(payload);
@@ -130,7 +132,7 @@ export function subscribeToPostgresChanges<
 
   const channelInstance = supabase.channel(channelName)
     .on(
-      'postgres_changes',
+      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
       filterOptions,
       callback
     )
