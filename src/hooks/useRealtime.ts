@@ -6,7 +6,8 @@ import {
   RealtimePostgresChangesPayload,
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   REALTIME_SUBSCRIBE_STATES,
-  RealtimePostgresChangesFilter, // Import this type
+  RealtimePostgresChangesFilter,
+  REALTIME_LISTEN_TYPES, // Import this
 } from '@supabase/supabase-js';
 
 interface RealtimeData<T extends Record<string, any>> {
@@ -22,7 +23,9 @@ export function useRealtime<T extends Record<string, any>>(
   callback: (payload: RealtimeData<T>) => void
 ) {
   const [data, setData] = useState<RealtimeData<T>>({ new: null, old: null, errors: null });
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  // channel state is not used, can be removed if not intended for future use
+  // const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+
 
   useEffect(() => {
     const channelName = `realtime_${tableName}_${event}_${Date.now()}`;
@@ -35,7 +38,7 @@ export function useRealtime<T extends Record<string, any>>(
 
     const newChannel = supabase.channel(channelName)
       .on(
-        'postgres_changes',
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use enum here
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           const a_new = payload.new as T | null;
@@ -54,7 +57,7 @@ export function useRealtime<T extends Record<string, any>>(
         }
       });
 
-    setChannel(newChannel);
+    // setChannel(newChannel); // Not strictly necessary if channel state isn't used elsewhere
 
     return () => {
       if (newChannel) {
@@ -72,7 +75,8 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
   eventType: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT | '*' = '*',
   callback: (payload: RealtimePostgresChangesPayload<T>) => void
 ) {
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null);
+  // channel state is not used here either
+  // const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   useEffect(() => {
     if (!tableName) {
@@ -89,7 +93,7 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
 
     const newChannel = supabase.channel(channelName)
       .on(
-        'postgres_changes',
+        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use enum here
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           callback(payload);
@@ -103,7 +107,7 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
         }
       });
 
-    setChannel(newChannel);
+    // setChannel(newChannel); // Not strictly necessary
 
     return () => {
       if (newChannel) {
@@ -129,7 +133,7 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
 
   const channelInstance = supabase.channel(channelName)
     .on(
-      'postgres_changes',
+      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use enum here
       filterOptions,
       callback
     )

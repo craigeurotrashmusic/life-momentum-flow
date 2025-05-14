@@ -17,6 +17,7 @@ import {
   NudgeType
 } from './types';
 import { generatePersonalizedNudge } from './personalization';
+import type { Json } from '@/integrations/supabase/types';
 
 // Mock nudges for demonstration
 const mockNudges: Nudge[] = [
@@ -118,6 +119,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     const localPrefs = localStorage.getItem('userPreferences');
     try {
         const parsedPrefs = localPrefs ? JSON.parse(localPrefs) : {};
+        // Ensure deep merge for nested objects
         return {
           ...defaultUserPreferences,
           ...parsedPrefs,
@@ -146,15 +148,28 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     if (user && !userPreferences.userId) {
       setUserPreferences(prev => ({ ...prev, userId: user.id }));
-      fetchUserPreferences(); // Fetch after userId is set
+      // fetchUserPreferences will be called by the change in userPreferences.userId if it's a dependency there
+      // or needs to be explicitly called if not.
+      // Given fetchUserPreferences depends on userPreferences.userId, this setup should trigger it.
     } else if (user && userPreferences.userId && user.id !== userPreferences.userId) {
-      // Handle user change if necessary, e.g., re-fetch or reset preferences
       setUserPreferences(prev => ({ ...defaultUserPreferences, userId: user.id }));
-      fetchUserPreferences();
-    } else if (userPreferences.userId && !userPreferences.isLoading) { // Check if userId exists before fetching
-        fetchUserPreferences();
+      // This will also trigger fetchUserPreferences due to userId change
     }
-  }, [user]); // Removed userPreferences.userId from dependency array to avoid loop, fetchUserPreferences is memoized
+    // Initial fetch if userId is already present (e.g. from localStorage)
+    // This condition might need adjustment based on fetchUserPreferences dependencies
+    else if (userPreferences.userId && !user && !userPreferences.isLoading) { // If user ID exists from local storage but user logs out
+       // Potentially clear or retain user preferences based on app logic for logged-out state
+       // For now, let's assume we keep them until a new user logs in or they are explicitly cleared.
+    }
+  }, [user]); // Effect for user session changes
+
+
+  useEffect(() => {
+    if (userPreferences.userId && !userPreferences.isLoading) {
+      fetchUserPreferences();
+    }
+  }, [userPreferences.userId]); // Effect for fetching preferences when userId is available
+
 
   useEffect(() => {
     const emotionalInterval = setInterval(() => {
@@ -215,13 +230,12 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         const customNudge: Nudge = {
             id: `custom-${Date.now()}`,
             message: customMessage,
-            type: 'reminder', // Or make type configurable
-            priority: 5, // Highest priority for direct triggers
+            type: 'reminder', 
+            priority: 5, 
             timestamp: new Date(),
         };
         setActivatedNudge(customNudge);
         setIsNudgeVisible(true);
-        // Do not remove from queue if it's a custom one-off message not in nudges list
         return;
     }
 
@@ -251,46 +265,46 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   
   const dismissNudge = () => {
     if (activatedNudge) {
-      // Add to history
       const historyItem: NudgeHistoryItem = {
         nudge: activatedNudge,
         userResponse: 'dismissed',
-        responseTime: new Date()
+        responseTime: new Date(),
+        timeToRespond: 0 // Assuming 0 for now, or calculate if needed
       };
-      setNudgeHistory(prevHistory => [historyItem, ...prevHistory].slice(0, 50)); // Keep history capped
+      setNudgeHistory(prevHistory => [historyItem, ...prevHistory].slice(0, 50)); 
     }
     
     setIsNudgeVisible(false);
-    setTimeout(() => setActivatedNudge(null), 300); // Delay clearing for animation
+    setTimeout(() => setActivatedNudge(null), 300); 
   };
   
   const snoozeNudge = () => {
     if (activatedNudge) {
-      // Add back to queue with reduced priority
-      const snoozedNudge: Nudge = { // Explicitly type snoozedNudge
+      const snoozedNudge: Nudge = { 
         ...activatedNudge,
         priority: Math.max(1, activatedNudge.priority - 1),
-        timestamp: new Date(Date.now() + 5 * 60 * 1000) // Snooze for 5 minutes
+        timestamp: new Date(Date.now() + 5 * 60 * 1000) 
       };
       setNudges(prevNudges => [...prevNudges, snoozedNudge]);
       
       const historyItem: NudgeHistoryItem = {
         nudge: activatedNudge,
         userResponse: 'snoozed',
-        responseTime: new Date()
+        responseTime: new Date(),
+        timeToRespond: 0 // Assuming 0 for now
       };
       setNudgeHistory(prevHistory => [historyItem, ...prevHistory].slice(0, 50));
       
       toast.info("Nudge snoozed for 5 minutes");
-      dismissNudge(); // This will hide the current nudge
+      dismissNudge(); 
     }
   };
   
   const toggleNudgeMute = () => {
     setNudgesMuted(prevMuted => {
       const newMutedState = !prevMuted;
-      if (newMutedState) { // If muting
-        dismissNudge(); // Dismiss any active nudge
+      if (newMutedState) { 
+        dismissNudge(); 
         toast.info("Nudges muted");
       } else {
         toast.info("Nudges active");
@@ -303,7 +317,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     setUserPreferences(prev => ({ ...prev, nudgeFrequency: frequency }));
   };
   
-  const toggleNotificationChannel = (channel: NotificationChannel) => { // Typed channel
+  const toggleNotificationChannel = (channel: NotificationChannel) => { 
     setUserPreferences(prev => {
       const currentChannels = prev.notificationChannels || defaultUserPreferences.notificationChannels;
       const currentIntegrations = prev.integrations || defaultUserPreferences.integrations;
@@ -327,49 +341,44 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     });
   };
   
-  const setQuietHours = (newQuietHours: Partial<QuietHours>) => { // Changed parameter to Partial<QuietHours>
+  const setQuietHours = (newQuietHours: Partial<QuietHours>) => { 
     setUserPreferences(prev => ({
       ...prev,
       quietHours: {
         ...(prev.quietHours || defaultUserPreferences.quietHours),
-        ...newQuietHours // Spread partial updates
+        ...newQuietHours 
       }
     }));
   };
-  
+
   const fetchUserPreferences = useCallback(async () => {
     if (!userPreferences.userId) {
       return;
     }
-    
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
-    
     try {
       const { data, error } = await supabase
         .from('user_preferences')
         .select('*')
         .eq('user_id', userPreferences.userId)
         .maybeSingle();
-      
-      if (data) {
-        const fetchedPreferences = data as any; // Cast to any to handle potential Json types from Supabase
 
+      if (data) {
+        // Ensure fetched data is correctly merged with defaults and existing state
         setUserPreferences(prev => ({
-          ...defaultUserPreferences, // Start with defaults
-          ...prev, // Spread previous state to keep any non-DB related local state
-          userId: userPreferences.userId, // Preserve current userId
-          nudgeFrequency: typeof fetchedPreferences.nudge_frequency === 'number' 
-            ? fetchedPreferences.nudge_frequency 
-            : prev.nudgeFrequency,
-          notificationChannels: typeof fetchedPreferences.notification_channels === 'object' && fetchedPreferences.notification_channels !== null
-            ? { ...defaultUserPreferences.notificationChannels, ...fetchedPreferences.notification_channels }
-            : prev.notificationChannels,
-          quietHours: typeof fetchedPreferences.quiet_hours === 'object' && fetchedPreferences.quiet_hours !== null
-            ? { ...defaultUserPreferences.quietHours, ...fetchedPreferences.quiet_hours }
-            : prev.quietHours,
-          integrations: typeof fetchedPreferences.integrations === 'object' && fetchedPreferences.integrations !== null
-            ? { ...defaultUserPreferences.integrations, ...fetchedPreferences.integrations }
-            : prev.integrations,
+          ...defaultUserPreferences, // Start with global defaults
+          ...prev, // Overlay current state (especially non-DB related parts like isLoading if needed before this fetch)
+          userId: userPreferences.userId, // Preserve current userId from state
+          nudgeFrequency: typeof data.nudge_frequency === 'number' ? data.nudge_frequency : defaultUserPreferences.nudgeFrequency,
+          notificationChannels: typeof data.notification_channels === 'object' && data.notification_channels !== null
+            ? { ...defaultUserPreferences.notificationChannels, ...(data.notification_channels as UserPreferences['notificationChannels']) }
+            : defaultUserPreferences.notificationChannels,
+          quietHours: typeof data.quiet_hours === 'object' && data.quiet_hours !== null
+            ? { ...defaultUserPreferences.quietHours, ...(data.quiet_hours as QuietHours) }
+            : defaultUserPreferences.quietHours,
+          integrations: typeof data.integrations === 'object' && data.integrations !== null
+            ? { ...defaultUserPreferences.integrations, ...(data.integrations as UserPreferences['integrations']) }
+            : defaultUserPreferences.integrations,
           isLoading: false,
         }));
       } else if (error) {
@@ -377,50 +386,56 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         console.error('Failed to fetch user preferences:', error);
         setUserPreferences(prev => ({ ...prev, isLoading: false }));
       } else {
-        // No data found, ensure defaults are set for this user
-        setUserPreferences(prev => ({ ...defaultUserPreferences, userId: userPreferences.userId, isLoading: false }));
+        // No data found, set user-specific defaults (especially important for new users)
+        setUserPreferences(prev => ({
+             ...defaultUserPreferences, 
+             userId: userPreferences.userId, // keep the current user ID
+             isLoading: false 
+        }));
       }
     } catch (error: any) {
       toast.error(`Failed to fetch user preferences: ${error.message}`);
       console.error('Failed to fetch user preferences:', error);
       setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userPreferences.userId]);
+  }, [userPreferences.userId]); // Removed fetchUserPreferences from its own dependency array
 
   const saveUserPreferences = async (): Promise<void> => {
     if (!userPreferences.userId) {
       toast.error("User ID not available. Cannot save preferences.");
       return;
     }
-    
+
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
-    
-    // Prepare data for Supabase, ensuring it matches the DB schema
-    const preferencesToSave = {
+
+    // Construct the object to save, ensuring it matches the DB schema
+    // and casting complex objects to Json if TypeScript requires it.
+    // The 'user_preferences' table expects specific column names.
+    const preferencesToSaveForDb = {
       user_id: userPreferences.userId,
       nudge_frequency: userPreferences.nudgeFrequency,
-      notification_channels: userPreferences.notificationChannels,
-      quiet_hours: userPreferences.quietHours,
-      integrations: userPreferences.integrations,
-      // updated_at will be handled by the DB trigger or default now()
+      // Cast to Json to satisfy Supabase client types if necessary,
+      // though Supabase client often handles JS objects for JSONB fields.
+      // The error indicates a mismatch, so being explicit or ensuring structure.
+      notification_channels: userPreferences.notificationChannels as Json,
+      quiet_hours: userPreferences.quietHours as Json,
+      integrations: userPreferences.integrations as Json,
+      // created_at and updated_at are typically handled by the database.
     };
 
     try {
       const { error } = await supabase
         .from('user_preferences')
-        .upsert(preferencesToSave, { onConflict: 'user_id' }); // Specify onConflict for upsert
+        .upsert(preferencesToSaveForDb); // Pass the correctly structured and typed object
 
       if (error) {
         toast.error(`Failed to save preferences: ${error.message}`);
         console.error('Failed to save preferences:', error);
       } else {
         toast.success("Preferences saved successfully!");
-        // Update local state with what was saved, ensuring isLoading is reset
-        setUserPreferences(prev => ({ 
-          ...prev, 
-          // spread the successfully saved values back if needed, though upsert returns nothing on success by default
-          isLoading: false 
-        }));
+        // Optionally re-fetch or update local state to confirm consistency
+        // For now, assuming the local state is the source of truth that was just saved.
+        setUserPreferences(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error: any) {
       toast.error(`Failed to save preferences: ${error.message}`);
@@ -471,17 +486,17 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         userPreferences,
         saveUserPreferences,
         fetchUserPreferences,
-        lastNudgeEvent: null, 
+        lastNudgeEvent: null,
         logNudgeEvent,
         nudgeHistory,
-        flowState: { // Provide a default/initial flow state
+        flowState: {
           intensity: 0,
           startTime: null,
           endTime: null,
           active: false,
         },
         updateFlowState,
-        emotionalStateHistory: [], // Provide a default/initial emotional state history
+        emotionalStateHistory: [],
         addEmotionalState,
         isLoadingPreferences,
         activatedNudge,
@@ -507,4 +522,4 @@ export const useNudge = () => {
   return context;
 };
 
-// The second defaultUserPreferences const that was here has been removed.
+// The second defaultUserPreferences const that was here has been removed in previous step.
