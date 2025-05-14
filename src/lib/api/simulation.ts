@@ -1,7 +1,8 @@
+
 import { supabase } from '../supabaseClient';
 import { toast } from '@/hooks/use-toast';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
+import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'; // Corrected import path
 
 export type ScenarioType =
   | "sleep"
@@ -26,14 +27,13 @@ export interface Simulation {
   created_at: string; // timestamptz
 }
 
-// For creating a new simulation, deltas are provided from the frontend
+// For creating a new simulation
 export interface CreateSimulationParams {
   scenario_type: ScenarioType;
   parameters: Record<string, any>;
   health_delta: number;
   wealth_delta: number;
   psychology_delta: number;
-  // user_id will be handled by RLS or passed explicitly if needed from a secure context
 }
 
 // This is the older specific type, ensure it's distinct or reconciled with Simulation
@@ -59,14 +59,14 @@ export const createSimulation = async (userId: string, params: CreateSimulationP
 
   const { data, error } = await supabase
     .from('simulations')
-    .insert([{
+    .insert({ // Pass a single object, not an array
       user_id: userId,
       scenario_type: params.scenario_type,
       parameters: params.parameters,
       health_delta: params.health_delta,
       wealth_delta: params.wealth_delta,
       psychology_delta: params.psychology_delta,
-    }])
+    })
     .select()
     .single();
 

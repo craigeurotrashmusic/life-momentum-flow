@@ -92,7 +92,16 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      scenario_type_enum: "sleep" | "finance" | "workout" | "diet" | "custom"
+      scenario_type_enum:
+        | "sleep"
+        | "finance"
+        | "workout"
+        | "diet"
+        | "custom"
+        | "career_change"
+        | "investment_strategy"
+        | "health_intervention"
+        | "relationship_change"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -208,7 +217,17 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      scenario_type_enum: ["sleep", "finance", "workout", "diet", "custom"],
+      scenario_type_enum: [
+        "sleep",
+        "finance",
+        "workout",
+        "diet",
+        "custom",
+        "career_change",
+        "investment_strategy",
+        "health_intervention",
+        "relationship_change",
+      ],
     },
   },
 } as const
