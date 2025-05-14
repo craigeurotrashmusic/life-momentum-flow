@@ -64,7 +64,57 @@ const defaultUserPreferences: UserPreferences = {
   isLoading: false,
 };
 
-// Simulated emotional states and detection
+// Helper to parse QuietHours from Json
+const parseQuietHours = (jsonValue: Json | undefined): QuietHours => {
+  if (
+    jsonValue &&
+    typeof jsonValue === 'object' &&
+    !Array.isArray(jsonValue) &&
+    'start' in jsonValue && typeof jsonValue.start === 'string' &&
+    'end' in jsonValue && typeof jsonValue.end === 'string' &&
+    'enabled' in jsonValue && typeof jsonValue.enabled === 'boolean'
+  ) {
+    return { start: jsonValue.start, end: jsonValue.end, enabled: jsonValue.enabled };
+  }
+  return defaultUserPreferences.quietHours;
+};
+
+// Helper to parse NotificationChannels from Json
+const parseNotificationChannels = (jsonValue: Json | undefined): Record<NotificationChannel, NotificationChannelStatus> => {
+  if (jsonValue && typeof jsonValue === 'object' && !Array.isArray(jsonValue)) {
+    const channels = { ...defaultUserPreferences.notificationChannels };
+    let allKeysValid = true;
+    for (const key in jsonValue) {
+      if (Object.prototype.hasOwnProperty.call(jsonValue, key) && key in channels) {
+        if (typeof (jsonValue as any)[key] === 'boolean') {
+          (channels as any)[key] = (jsonValue as any)[key];
+        } else {
+          allKeysValid = false; break;
+        }
+      } else if (Object.prototype.hasOwnProperty.call(jsonValue, key) && !(key in channels)){
+        // unknown key, might be an error or old data
+      }
+    }
+    if (allKeysValid) return channels;
+  }
+  return defaultUserPreferences.notificationChannels;
+};
+
+// Helper to parse Integrations from Json
+const parseIntegrations = (jsonValue: Json | undefined): UserPreferences['integrations'] => {
+  if (
+    jsonValue &&
+    typeof jsonValue === 'object' &&
+    !Array.isArray(jsonValue) &&
+    'googleCalendar' in jsonValue && typeof jsonValue.googleCalendar === 'boolean' &&
+    'googleTasks' in jsonValue && typeof jsonValue.googleTasks === 'boolean'
+  ) {
+    return { googleCalendar: jsonValue.googleCalendar, googleTasks: jsonValue.googleTasks };
+  }
+  return defaultUserPreferences.integrations;
+};
+
+// Mock emotional states and detection
 const emotionalStates = ['energized', 'focused', 'neutral', 'distracted', 'tired'];
 
 // Define NudgeContextType
@@ -124,18 +174,9 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
           ...defaultUserPreferences,
           ...parsedPrefs,
           userId: parsedPrefs.userId || user?.id,
-          notificationChannels: {
-            ...defaultUserPreferences.notificationChannels,
-            ...(parsedPrefs.notificationChannels || {}),
-          },
-          quietHours: {
-            ...defaultUserPreferences.quietHours,
-            ...(parsedPrefs.quietHours || {}),
-          },
-          integrations: {
-            ...defaultUserPreferences.integrations,
-            ...(parsedPrefs.integrations || {}),
-          },
+          notificationChannels: parsedPrefs.notificationChannels ? parseNotificationChannels(parsedPrefs.notificationChannels as Json) : defaultUserPreferences.notificationChannels,
+          quietHours: parsedPrefs.quietHours ? parseQuietHours(parsedPrefs.quietHours as Json) : defaultUserPreferences.quietHours,
+          integrations: parsedPrefs.integrations ? parseIntegrations(parsedPrefs.integrations as Json) : defaultUserPreferences.integrations,
         };
     } catch (e) {
         console.error("Failed to parse user preferences from localStorage", e);
@@ -364,21 +405,14 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         .maybeSingle();
 
       if (data) {
-        // Ensure fetched data is correctly merged with defaults and existing state
         setUserPreferences(prev => ({
           ...defaultUserPreferences, // Start with global defaults
-          ...prev, // Overlay current state (especially non-DB related parts like isLoading if needed before this fetch)
-          userId: userPreferences.userId, // Preserve current userId from state
+          ...prev, // Overlay current state
+          userId: userPreferences.userId, // Preserve current userId
           nudgeFrequency: typeof data.nudge_frequency === 'number' ? data.nudge_frequency : defaultUserPreferences.nudgeFrequency,
-          notificationChannels: typeof data.notification_channels === 'object' && data.notification_channels !== null
-            ? { ...defaultUserPreferences.notificationChannels, ...(data.notification_channels as UserPreferences['notificationChannels']) }
-            : defaultUserPreferences.notificationChannels,
-          quietHours: typeof data.quiet_hours === 'object' && data.quiet_hours !== null
-            ? { ...defaultUserPreferences.quietHours, ...(data.quiet_hours as QuietHours) }
-            : defaultUserPreferences.quietHours,
-          integrations: typeof data.integrations === 'object' && data.integrations !== null
-            ? { ...defaultUserPreferences.integrations, ...(data.integrations as UserPreferences['integrations']) }
-            : defaultUserPreferences.integrations,
+          notificationChannels: parseNotificationChannels(data.notification_channels),
+          quietHours: parseQuietHours(data.quiet_hours),
+          integrations: parseIntegrations(data.integrations),
           isLoading: false,
         }));
       } else if (error) {
@@ -386,10 +420,9 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         console.error('Failed to fetch user preferences:', error);
         setUserPreferences(prev => ({ ...prev, isLoading: false }));
       } else {
-        // No data found, set user-specific defaults (especially important for new users)
         setUserPreferences(prev => ({
              ...defaultUserPreferences, 
-             userId: userPreferences.userId, // keep the current user ID
+             userId: userPreferences.userId, 
              isLoading: false 
         }));
       }
@@ -398,7 +431,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
       console.error('Failed to fetch user preferences:', error);
       setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userPreferences.userId]); // Removed fetchUserPreferences from its own dependency array
+  }, [userPreferences.userId]);
 
   const saveUserPreferences = async (): Promise<void> => {
     if (!userPreferences.userId) {
@@ -408,31 +441,24 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
 
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
 
-    // Construct the object to save, ensuring it matches the DB schema
-    // and casting complex objects to Json if TypeScript requires it.
-    // The 'user_preferences' table expects specific column names.
     const preferencesToSaveForDb = {
       user_id: userPreferences.userId,
       nudge_frequency: userPreferences.nudgeFrequency,
-      // Cast to Json to satisfy Supabase client types
       notification_channels: userPreferences.notificationChannels as unknown as Json,
       quiet_hours: userPreferences.quietHours as unknown as Json,
       integrations: userPreferences.integrations as unknown as Json,
-      // created_at and updated_at are typically handled by the database.
     };
 
     try {
       const { error } = await supabase
         .from('user_preferences')
-        .upsert(preferencesToSaveForDb); // Pass the correctly structured and typed object
+        .upsert(preferencesToSaveForDb); 
 
       if (error) {
         toast.error(`Failed to save preferences: ${error.message}`);
         console.error('Failed to save preferences:', error);
       } else {
         toast.success("Preferences saved successfully!");
-        // Optionally re-fetch or update local state to confirm consistency
-        // For now, assuming the local state is the source of truth that was just saved.
         setUserPreferences(prev => ({ ...prev, isLoading: false }));
       }
     } catch (error: any) {
