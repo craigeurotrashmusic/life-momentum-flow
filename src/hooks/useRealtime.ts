@@ -7,7 +7,7 @@ import {
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   REALTIME_SUBSCRIBE_STATES,
   RealtimePostgresChangesFilter,
-  REALTIME_LISTEN_TYPES, // Added import
+  // REALTIME_LISTEN_TYPES, // No longer needed if using string literals
 } from '@supabase/supabase-js';
 
 interface RealtimeData<T extends Record<string, any>> {
@@ -38,7 +38,7 @@ export function useRealtime<
 
     const newChannel = supabase.channel(channelName)
       .on(
-        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
+        'postgres_changes', // Changed to string literal
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           const a_new = payload.new as T | null;
@@ -91,7 +91,7 @@ export function useRealtimePostgresChanges<
 
     const newChannel = supabase.channel(channelName)
       .on(
-        REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
+        'postgres_changes', // Changed to string literal
         filterOptions,
         (payload: RealtimePostgresChangesPayload<T>) => {
           callback(payload);
@@ -132,7 +132,7 @@ export function subscribeToPostgresChanges<
 
   const channelInstance = supabase.channel(channelName)
     .on(
-      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Changed to use enum
+      'postgres_changes', // Changed to string literal
       filterOptions,
       callback
     )
