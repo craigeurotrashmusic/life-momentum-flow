@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      focus_sessions: {
+        Row: {
+          completed: boolean
+          created_at: string
+          duration: number
+          end_time: string | null
+          flow_state_achieved: boolean
+          focus_rating: number | null
+          goal_text: string | null
+          id: string
+          interruptions: number
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          created_at?: string
+          duration: number
+          end_time?: string | null
+          flow_state_achieved?: boolean
+          focus_rating?: number | null
+          goal_text?: string | null
+          id?: string
+          interruptions?: number
+          start_time?: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          created_at?: string
+          duration?: number
+          end_time?: string | null
+          flow_state_achieved?: boolean
+          focus_rating?: number | null
+          goal_text?: string | null
+          id?: string
+          interruptions?: number
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       simulations: {
         Row: {
           created_at: string

@@ -1,8 +1,7 @@
-
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import EpochTracker from '@/components/organisms/EpochTracker';
-import FocusCard from '@/components/cards/FocusCard';
+import FocusCard from '@/components/organisms/FocusCard'; // Updated import path
 // import HabitCard from '@/components/cards/HabitCard'; // Eager import removed
 import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
@@ -40,7 +39,6 @@ const Home = () => {
      <div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-5 h-[400px] flex items-center justify-center">Loading Nudge Card...</div>
   );
 
-
   return (
     <div className="min-h-screen bg-background pb-16">
       <Header />
@@ -59,7 +57,7 @@ const Home = () => {
         <div className="card-stack no-scrollbar pb-20">
           <ClarityHubCard />
           <EpochTracker /> 
-          <FocusCard />
+          <FocusCard /> {/* Path is updated here */}
           <Suspense fallback={<CardSkeleton />}>
             <HabitCard />
           </Suspense>
@@ -76,4 +74,3 @@ const Home = () => {
 };
 
 export default Home;
-
