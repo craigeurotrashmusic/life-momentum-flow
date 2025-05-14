@@ -2,31 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Nudge, EmotionalState, FlowPeriod, NudgeHistoryItem, NotificationChannels, QuietHours, UserPreferences } from './types';
 import { toast } from '@/components/ui/sonner';
 import { generatePersonalizedNudge } from './personalization';
-
-interface NudgeContextType {
-  nudges: Nudge[];
-  activatedNudge: Nudge | null;
-  isNudgeVisible: boolean;
-  nudgesMuted: boolean;
-  emotionalState: string;
-  energyLevel: number;
-  nudgeHistory: NudgeHistoryItem[];
-  flowPeriods: FlowPeriod[];
-  nudgeFrequency: number;
-  notificationChannels: NotificationChannels;
-  quietHours: QuietHours;
-  userPreferences: UserPreferences;
-  triggerNudge: () => void;
-  dismissNudge: () => void;
-  snoozeNudge: () => void;
-  toggleNudgeMute: () => void;
-  setNudgeFrequency: (frequency: number) => void;
-  toggleNotificationChannel: (channel: string) => void;
-  setQuietHours: (hours: { start: string; end: string }) => void;
-  saveUserPreferences: () => void;
-}
-
-const NudgeContext = createContext<NudgeContextType | undefined>(undefined);
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Mock nudges for demonstration
 const mockNudges: Nudge[] = [
@@ -143,6 +119,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     JSON.parse(localStorage.getItem('userPreferences') || JSON.stringify(defaultUserPreferences))
   );
   
+  const isMobile = useIsMobile();
+  
   // Extract preferences for easier access
   const { nudgeFrequency, notificationChannels, quietHours } = userPreferences;
   
@@ -176,6 +154,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
             if (notificationChannels.inApp) {
               triggerNudge();
             }
+          } else {
+            toast.error("Could not generate a new nudge right now.");
           }
         });
       }
@@ -214,6 +194,21 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
       
       // Remove the triggered nudge from the queue
       setNudges(nudges.filter(nudge => nudge.id !== selectedNudge.id));
+    } else if (nudges.length === 0) {
+      // Generate a new nudge on demand if queue is empty
+      generatePersonalizedNudge({ 
+        emotionalState, 
+        energyLevel, 
+        flowPeriods,
+        nudgeHistory 
+      }).then(nudge => {
+        if (nudge) {
+          setActivatedNudge(nudge);
+          setIsNudgeVisible(true);
+        } else {
+          toast.error("Could not generate a new nudge right now.");
+        }
+      });
     }
   };
   
@@ -360,6 +355,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     </NudgeContext.Provider>
   );
 };
+
+const NudgeContext = createContext<NudgeContextType | undefined>(undefined);
 
 export const useNudge = () => {
   const context = useContext(NudgeContext);

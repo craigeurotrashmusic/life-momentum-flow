@@ -1,22 +1,22 @@
+
 import { useEffect, useRef, lazy, Suspense } from 'react';
 import Header from '@/components/layout/Header';
 import EpochTracker from '@/components/organisms/EpochTracker';
-import FocusCard from '@/components/organisms/FocusCard'; // Updated import path
-// import HabitCard from '@/components/cards/HabitCard'; // Eager import removed
+import FocusCard from '@/components/organisms/FocusCard';
 import SupplementCard from '@/components/cards/SupplementCard';
 import ReviewCard from '@/components/cards/ReviewCard';
 import SimulationCard from '@/components/cards/SimulationCard';
 import { useToast } from '@/components/ui/use-toast';
 import ClarityHubCard from '@/components/organisms/ClarityHubCard';
-import { Skeleton } from '@/components/ui/skeleton'; // For fallback
+import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const NudgeCard = lazy(() => import('@/components/cards/NudgeCard'));
-const HabitCard = lazy(() => import('@/components/cards/HabitCard')); // Lazy import HabitCard
+const HabitCard = lazy(() => import('@/components/cards/HabitCard'));
 
 const Home = () => {
   const { toast } = useToast();
-  // scrollContainerRef is no longer needed for the custom scroll logic
-  // const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Welcome toast for demo purposes
@@ -24,40 +24,33 @@ const Home = () => {
       title: "Welcome to Momentum OS",
       description: "Your life dashboard is ready",
     });
-    
-    // Removed the custom scroll handling logic that caused snapping.
-    // The smooth scrolling will now be handled by CSS on the main container.
   }, [toast]);
 
   const CardSkeleton = () => (
-    <div className="card-stack-item bg-secondary/20 rounded-2xl shadow-lg p-5 h-[200px] flex items-center justify-center">
+    <div className="card-stack-item bg-secondary/20 rounded-2xl shadow-lg p-4 sm:p-5 h-[200px] flex items-center justify-center">
       <Skeleton className="w-3/4 h-8" />
     </div>
   );
   
   const NudgeCardSkeleton = () => (
-     <div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-5 h-[400px] flex items-center justify-center">Loading Nudge Card...</div>
+     <div className="card-stack-item bg-gradient-to-br from-purple-900/30 to-pink-900/30 rounded-2xl shadow-lg p-4 sm:p-5 h-[400px] flex items-center justify-center">
+       <div className="flex flex-col items-center gap-3">
+         <Skeleton className="w-12 h-12 rounded-full" />
+         <Skeleton className="w-40 h-6" />
+         <Skeleton className="w-32 h-4" />
+       </div>
+     </div>
   );
 
   return (
     <div className="min-h-screen bg-background pb-16">
       <Header />
       
-      {/* 
-        Updated main element:
-        - Removed ref={scrollContainerRef} as it's no longer used by the removed JS.
-        - Added `overflow-y-auto` to ensure it's the scroll container.
-        - Added `scroll-smooth` Tailwind class for `scroll-behavior: smooth;`.
-      */}
-      <main className="pt-16 container mx-auto h-screen overflow-y-auto scroll-smooth">
-        {/* 
-          The div with `card-stack` class will no longer be a scroll container itself.
-          It will lay out its children within the scrollable `main` element.
-        */}
-        <div className="card-stack no-scrollbar pb-20">
+      <main className="pt-16 container mx-auto h-screen overflow-y-auto scroll-smooth px-4 sm:px-6">
+        <div className="card-stack no-scrollbar pb-20 sm:pb-24">
           <ClarityHubCard />
           <EpochTracker /> 
-          <FocusCard /> {/* Path is updated here */}
+          <FocusCard />
           <Suspense fallback={<CardSkeleton />}>
             <HabitCard />
           </Suspense>

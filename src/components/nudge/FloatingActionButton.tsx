@@ -5,10 +5,12 @@ import { ChevronUp, Bell, Settings, Plus, X, Brain } from 'lucide-react';
 import { useNudge } from './NudgeContext';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const FloatingActionButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const { triggerNudge, nudgesMuted, toggleNudgeMute } = useNudge();
+  const isMobile = useIsMobile();
 
   const handleTriggerNudge = () => {
     triggerNudge();
@@ -32,7 +34,7 @@ const FloatingActionButton = () => {
   ];
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className={`fixed ${isMobile ? 'bottom-4 right-4' : 'bottom-6 right-6'} z-50`}>
       <AnimatePresence>
         {isOpen && (
           <motion.div 
@@ -53,7 +55,7 @@ const FloatingActionButton = () => {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="flex items-center gap-2 px-3 py-2 rounded-full shadow-md"
+                  className="flex items-center gap-2 px-3 py-2 rounded-full shadow-md min-h-[44px]"
                   onClick={action.onClick}
                 >
                   {action.icon}
@@ -68,8 +70,9 @@ const FloatingActionButton = () => {
       <Button
         variant={isOpen ? "destructive" : "default"}
         size="icon"
-        className="h-12 w-12 rounded-full shadow-lg"
+        className={`${isMobile ? 'h-12 w-12' : 'h-14 w-14'} rounded-full shadow-lg`}
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
       >
         <motion.div
           animate={{ rotate: isOpen ? 45 : 0 }}

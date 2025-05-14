@@ -2,6 +2,7 @@
 import { ReactNode, useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface LifeCardProps {
   title: string;
@@ -21,6 +22,7 @@ const LifeCard = ({
   const [expanded, setExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState<number | "auto">("auto");
+  const isMobile = useIsMobile();
   
   useEffect(() => {
     if (contentRef.current) {
@@ -43,10 +45,10 @@ const LifeCard = ({
 
   return (
     <motion.div
-      className={`card-stack-item ${color} rounded-2xl shadow-lg p-5 overflow-hidden transition-all duration-300 relative`}
+      className={`card-stack-item ${color} rounded-2xl shadow-lg p-4 sm:p-5 overflow-hidden transition-all duration-300 relative`}
       style={{
         height: expanded ? 
-          (contentHeight === "auto" ? "auto" : contentHeight + 100) : 
+          (contentHeight === "auto" ? "auto" : contentHeight + 120) : 
           'var(--collapsed-height)'
       }}
       initial={{ opacity: 0, y: 20 }}
@@ -57,18 +59,18 @@ const LifeCard = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <div className="mr-3 text-foreground">{icon}</div>
-          <h2 className="font-semibold text-xl">{title}</h2>
+          <h2 className="font-semibold text-lg sm:text-xl">{title}</h2>
         </div>
         
         {expandable && (
           <motion.button
             onClick={handleToggle}
-            className="p-1 rounded-full hover:bg-white/10 transition-colors"
+            className="p-2 rounded-full hover:bg-white/10 transition-colors"
             whileTap={{ scale: 0.9 }}
             aria-label={expanded ? "Collapse" : "Expand"}
           >
             <ChevronDown
-              size={20}
+              size={isMobile ? 18 : 20}
               className={`transform transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`}
             />
           </motion.button>
@@ -78,7 +80,7 @@ const LifeCard = ({
       <AnimatePresence>
         <motion.div
           ref={contentRef}
-          className={`transition-all duration-300`}
+          className={`transition-all duration-300 px-1`}
           initial={false}
           animate={{ 
             opacity: expanded ? 1 : 0.9,
