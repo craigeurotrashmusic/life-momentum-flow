@@ -1,27 +1,38 @@
-import { useEffect } from "react";
+
+import { useEffect, useState } from "react"; // Added useState
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ChevronRight } from "lucide-react";
-import { prefetchDashboardData, markOnboardingComplete } from "@/lib/api/onboardingData";
+// import { prefetchDashboardData } from "@/lib/api/onboardingData"; // Function not exported
+import { markOnboardingComplete } from "@/lib/api/onboardingData"; // Added import
 import { toast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+
 
 interface CompletionSlideProps {
   onComplete?: () => void;
-  isSubmitting?: boolean;
-  setIsSubmitting: (value: boolean) => void;
+  isSubmitting?: boolean; // Keep this prop
+  setIsSubmitting: (value: boolean) => void; // Keep this prop
 }
 
-const CompletionSlide = ({ setIsSubmitting }: CompletionSlideProps) => {
+const CompletionSlide = ({ setIsSubmitting, isSubmitting: propIsSubmitting }: CompletionSlideProps) => { // Renamed prop to avoid conflict
   const navigate = useNavigate();
-  const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
+  // Use local state for button disabled, controlled by prop for overall form state
+  const [localIsSubmitting, setLocalIsSubmitting] = useState(false); 
 
+  useEffect(() => {
+    if (propIsSubmitting !== undefined) { // Sync local state if prop changes
+        setLocalIsSubmitting(propIsSubmitting);
+    }
+  }, [propIsSubmitting]);
+
+  /*
   useEffect(() => {
     // Prefetch dashboard data in the background
     const prefetchData = async () => {
       try {
-        await prefetchDashboardData();
+        // await prefetchDashboardData(); // Commented out as it's not available
+        console.log("prefetchDashboardData call removed as function is not available.");
       } catch (error) {
         console.error("Error prefetching dashboard data:", error);
       }
@@ -29,12 +40,13 @@ const CompletionSlide = ({ setIsSubmitting }: CompletionSlideProps) => {
     
     prefetchData();
   }, []);
+  */
 
   const handleComplete = async () => {
     setLocalIsSubmitting(true);
-    setIsSubmitting(true);
+    setIsSubmitting(true); // Update parent state
     try {
-      await markOnboardingComplete();
+      await markOnboardingComplete(); // Call the existing function to mark completion
       navigate("/auth");
     } catch (error) {
       toast({
@@ -44,8 +56,9 @@ const CompletionSlide = ({ setIsSubmitting }: CompletionSlideProps) => {
       });
       console.error("Error completing onboarding:", error);
       setLocalIsSubmitting(false);
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Reset parent state on error
     }
+    // No finally block to reset submitting state if navigation occurs
   };
 
   return (
@@ -93,7 +106,7 @@ const CompletionSlide = ({ setIsSubmitting }: CompletionSlideProps) => {
             onClick={handleComplete}
             size="lg"
             className="rounded-full px-8 py-6 text-lg group fixed-mobile-button"
-            disabled={localIsSubmitting}
+            disabled={localIsSubmitting} // Use local submitting state for button
           >
             {localIsSubmitting ? "Preparing..." : "Create Account"}
             <ChevronRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />

@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense, useEffect, useCallback } from 'react';
 import { ChevronRight, LineChart, Settings, Zap, ArrowRight, ArrowLeft, BarChart3 } from 'lucide-react';
+import type { EmblaOptionsType } from 'embla-carousel-react'; // Import EmblaOptionsType
 import LifeCard from './LifeCard';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -8,7 +9,6 @@ import {
   CarouselContent,
   CarouselItem,
   CarouselApi,
-  type CarouselOptions,
 } from "@/components/ui/carousel";
 import ScenarioForm from '@/components/simulation/ScenarioForm';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,7 +22,7 @@ import {
   ScenarioType 
 } from '@/lib/api/simulation';
 import { toast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Corrected import path
+import { useAuth } from '@/hooks/useAuth'; // Ensure this path is correct and useAuth is exported
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts';
 
 // Lazy load heavy components (DriftCorrection might be less relevant if not directly tied to simulation output display)
@@ -184,9 +184,8 @@ const SimulationCard = () => {
     return data;
   };
   
-  const carouselOptions: CarouselOptions = {
+  const carouselOptions: EmblaOptionsType = { // Use EmblaOptionsType
     align: "start",
-    // draggable: false, // Removed problematic option
   };
 
   return (

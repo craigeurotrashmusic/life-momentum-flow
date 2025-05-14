@@ -6,9 +6,9 @@ import { TrendingUp, TrendingDown, MinusSquare, Zap, Activity, Brain, DollarSign
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { fetchClarityMetrics, refreshClarityMetrics, subscribeToClarityMetricsChanges } from '@/lib/api/clarity'; // Corrected API imports
-import type { ClarityMetrics, ClarityPillar } from '@/types/clarity'; // Corrected type imports
-import { useAuth } from '@/hooks/useAuth'; // Corrected import path
+import { fetchClarityMetrics, refreshClarityMetrics, subscribeToClarityMetricsChanges } from '@/lib/api/clarity';
+import type { ClarityMetrics, ClarityPillar } from '@/types/clarity';
+import { useAuth } from '@/hooks/useAuth';
 
 // Placeholder data for coreValues and longTermGoals
 const coreValues = [
@@ -61,7 +61,7 @@ const ClarityHubCard: React.FC = () => {
     setIsError(false);
     setError(null);
     try {
-      const data = await refreshClarityMetrics(userId); // Using imported function
+      const data = await refreshClarityMetrics(userId);
       setMetrics(data);
     } catch (e: any) {
       setIsError(true);
@@ -75,15 +75,14 @@ const ClarityHubCard: React.FC = () => {
   useEffect(() => {
     if (userId) {
       loadMetrics();
-      const subscription = subscribeToClarityMetricsChanges(userId, (payload: any) => { // payload type can be more specific
+      const { unsubscribe } = subscribeToClarityMetricsChanges(userId, (payload: any) => {
         console.log('Clarity metrics change received:', payload);
         loadMetrics(); 
       });
       
       return () => {
-        // Assuming subscribeToClarityMetricsChanges returns an object with an unsubscribe method
-        if (subscription && typeof subscription.unsubscribe === 'function') {
-          subscription.unsubscribe();
+        if (unsubscribe && typeof unsubscribe === 'function') {
+          unsubscribe();
         }
       };
     } else {
@@ -102,7 +101,7 @@ const ClarityHubCard: React.FC = () => {
     );
   }
 
-  if (isError && !metrics) { // Show error only if there are no metrics to display
+  if (isError && !metrics) {
     return (
       <LifeCard title="Clarity Hub" icon={<Brain />} color="bg-gradient-to-br from-gray-700 to-gray-800">
         <div className="text-center p-4">
@@ -145,7 +144,6 @@ const ClarityHubCard: React.FC = () => {
     return 'text-red-400';
   };
 
-  // Actionable Micro-Leverage
   const suggestedActions = [];
   if (metrics) {
     if (metrics.healthScore < 60) suggestedActions.push({ text: "Optimize your supplement stack.", action: () => console.log("Action: Open SupplementCard") });
@@ -170,9 +168,8 @@ const ClarityHubCard: React.FC = () => {
             </div>
             <Skeleton className="h-10 w-full rounded-lg" />
           </div>
-        ) : metrics && ( // Ensure metrics is not null before rendering content
+        ) : metrics && ( 
           <>
-            {/* Overall Clarity Score Section */}
             <div className="text-center mb-6">
               <div className="relative inline-block">
                 <div className="text-5xl font-bold" style={{ color: getPillarScoreColor(overallScore).replace('text-', '').replace('-400', '') }}>{overallScore}
@@ -190,7 +187,6 @@ const ClarityHubCard: React.FC = () => {
               />
             </div>
 
-            {/* Pillars Section */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-6">
               {pillars.map((pillar) => (
                 <div key={pillar.name} className="glass-card p-3 sm:p-4 rounded-xl text-center flex flex-col items-center justify-between">
@@ -206,7 +202,6 @@ const ClarityHubCard: React.FC = () => {
               ))}
             </div>
 
-            {/* Actionable Micro-Leverage Section */}
             {suggestedActions.length > 0 && (
               <div className="mt-6 space-y-3">
                 <h4 className="text-md font-semibold">Suggested Actions:</h4>
@@ -234,7 +229,6 @@ const ClarityHubCard: React.FC = () => {
         )}
       </div>
 
-      {/* Detailed Dashboard Dialog (from ClarityCard.tsx) */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[90%] max-h-[80vh] overflow-y-auto bg-background/90 backdrop-blur-sm">
           <DialogHeader>

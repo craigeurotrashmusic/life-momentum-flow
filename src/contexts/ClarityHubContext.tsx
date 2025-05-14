@@ -2,8 +2,8 @@ import React, { createContext, useContext, ReactNode, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchClarityMetrics, refreshClarityMetrics } from '@/lib/api/clarity';
 import type { ClarityMetrics } from '@/types/clarity';
-import { subscribeSimulations, unsubscribeSimulations, Simulation } from '@/lib/api/simulation'; // Corrected import
-import { useAuth } from '@/hooks/useAuth'; // Corrected import path
+import { subscribeSimulations, unsubscribeSimulations, Simulation } from '@/lib/api/simulation';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/components/ui/use-toast';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
@@ -73,7 +73,7 @@ export const ClarityHubProvider = ({ children }: { children: ReactNode }) => {
     const simulationSubscription = subscribeSimulations(user.id, handleNewSimulation);
 
     return () => {
-      unsubscribeSimulations(); // Use the specific unsubscribe function
+      unsubscribeSimulations();
     };
   }, [user?.id, queryClient, refetchClarityMetricsQuery]);
 

@@ -1,7 +1,12 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import type { RealtimeChannel, RealtimePostgresChangesPayload, REALTIME_POSTGRES_CHANGES_LISTEN_EVENT } from '@supabase/supabase-js';
+import type { 
+    RealtimeChannel, 
+    RealtimePostgresChangesPayload, 
+    REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
+    RealtimePostgresChangesFilter // Import this type
+} from '@supabase/supabase-js';
 
 interface UseRealtimeOptions<T> {
   table: string;
@@ -17,7 +22,7 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
   const {
     table,
     schema = 'public',
-    filter,
+    filter: optionFilter, // Renamed to avoid conflict with filter variable name in scope
     event = '*',
     initialData = [],
     onDataChange,
@@ -32,9 +37,9 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
     console.log(`Realtime change on table ${table}:`, payload);
     
     if (onAllDataChange) {
-      setData(prevData => { // Pass previous data to onAllDataChange
+      setData(prevData => { 
         const updatedAllData = onAllDataChange(prevData, payload);
-        return updatedAllData ? updatedAllData : prevData; // Return previous data if undefined
+        return updatedAllData ? updatedAllData : prevData; 
       });
       return;
     }
@@ -43,8 +48,8 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
       const changedRecord = (payload.eventType === 'DELETE' ? payload.old : payload.new) as T;
       if (changedRecord) {
         const updatedRecordOrVoid = onDataChange(changedRecord, payload);
-        if (updatedRecordOrVoid !== undefined) { // Check if something is returned
-             const updatedRecord = updatedRecordOrVoid as T; // Cast if not void
+        if (updatedRecordOrVoid !== undefined) { 
+             const updatedRecord = updatedRecordOrVoid as T; 
              setData(prevData => {
                 const index = prevData.findIndex(item => item.id === updatedRecord.id);
                 if (index > -1) {
@@ -80,26 +85,31 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
       }
       return newData;
     });
-  }, [table, onDataChange, onAllDataChange]); // Removed 'data' from dependency array to avoid potential loops if onAllDataChange modifies data state directly.
+  }, [table, onDataChange, onAllDataChange]);
 
   useEffect(() => {
     const baseChannelName = `realtime:${schema}:${table}`;
-    const channelNameWithFilter = filter ? `${baseChannelName}:${filter}` : baseChannelName;
+    const channelNameWithFilter = optionFilter ? `${baseChannelName}:${optionFilter}` : baseChannelName;
     
     if (channel) {
         supabase.removeChannel(channel).catch(e => console.error("Error removing previous channel", e));
+    }
+
+    // Explicitly construct the filter object for `postgres_changes`
+    const postgresChangesFilter: RealtimePostgresChangesFilter<REALTIME_POSTGRES_CHANGES_LISTEN_EVENT> = {
+        event: event,
+        schema: schema,
+        table: table,
+    };
+    if (optionFilter) {
+        postgresChangesFilter.filter = optionFilter;
     }
 
     const newChannel = supabase
       .channel(channelNameWithFilter)
       .on(
         'postgres_changes',
-        {
-          event: event,
-          schema: schema,
-          table: table,
-          filter: filter,
-        },
+        postgresChangesFilter, // Use the explicitly constructed and typed filter object
         handleIncomingChange
       )
       .subscribe((status, err) => {
@@ -122,7 +132,7 @@ const useRealtime = <T extends { id?: any }>(options: UseRealtimeOptions<T>) => 
       }
       setChannel(null);
     };
-  }, [table, schema, filter, event, handleIncomingChange]);
+  }, [table, schema, optionFilter, event, handleIncomingChange]); // Use optionFilter in dependencies
 
   return { data, setData, error, channel };
 };
