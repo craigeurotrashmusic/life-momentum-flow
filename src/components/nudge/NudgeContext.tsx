@@ -157,7 +157,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     }
     // Initial fetch if userId is already present (e.g. from localStorage)
     // This condition might need adjustment based on fetchUserPreferences dependencies
-    else if (userPreferences.userId && !user && !userPreferences.isLoading) { // If user ID exists from local storage but user logs out
+    else if (userPreferences.userId && !userPreferences.isLoading) { // If user ID exists from local storage but user logs out
        // Potentially clear or retain user preferences based on app logic for logged-out state
        // For now, let's assume we keep them until a new user logs in or they are explicitly cleared.
     }
@@ -414,12 +414,10 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     const preferencesToSaveForDb = {
       user_id: userPreferences.userId,
       nudge_frequency: userPreferences.nudgeFrequency,
-      // Cast to Json to satisfy Supabase client types if necessary,
-      // though Supabase client often handles JS objects for JSONB fields.
-      // The error indicates a mismatch, so being explicit or ensuring structure.
-      notification_channels: userPreferences.notificationChannels as Json,
-      quiet_hours: userPreferences.quietHours as Json,
-      integrations: userPreferences.integrations as Json,
+      // Cast to Json to satisfy Supabase client types
+      notification_channels: userPreferences.notificationChannels as unknown as Json,
+      quiet_hours: userPreferences.quietHours as unknown as Json,
+      integrations: userPreferences.integrations as unknown as Json,
       // created_at and updated_at are typically handled by the database.
     };
 
@@ -521,5 +519,3 @@ export const useNudge = () => {
   }
   return context;
 };
-
-// The second defaultUserPreferences const that was here has been removed in previous step.
