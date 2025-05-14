@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import EmblaOptionsType from 'embla-carousel-react'; // Corrected: default import
+import type { Options as EmblaOptionsType } from 'embla-carousel-react'; // Fix import to use named import
 import {
   Card,
   CardContent,
@@ -23,8 +23,17 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { BarChartIcon, ZapIcon, TrendingUpIcon, TrendingDownIcon, AlertCircle, BrainIcon, DollarSignIcon, HeartPulseIcon, PlayIcon, ListIcon, InfoIcon, XIcon } from 'lucide-react';
-import { SimulationResult, SimulationParams, createSimulation, listRecentSimulations, subscribeToSimulationUpdates, unsubscribeFromSimulationUpdates } from '@/lib/api/simulation'; // Assuming subscribeToSimulationUpdates and unsubscribeFromSimulationUpdates are the correct names
-import { toast } from '@/components/ui/use-toast'; // Corrected path
+import { 
+  SimulationResult, 
+  createSimulation, 
+  listRecentSimulations, 
+  subscribeSimulations, 
+  unsubscribeSimulations, 
+  Simulation,
+  ScenarioType,
+  CreateSimulationParams
+} from '@/lib/api/simulation';
+import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip as RechartsTooltip, Legend } from 'recharts';
 import {
@@ -38,6 +47,50 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+// Define the parameters interface based on what's used in the component
+interface SimulationParams {
+  name: string;
+  durationMonths: number;
+  initialWealth: number;
+  monthlyContribution: number;
+  investmentRiskLevel: number;
+  healthImpactFactor: number;
+  psychologyImpactFactor: number;
+}
+
+// Adapter function to convert Simulation to SimulationResult
+function adaptSimulationToResult(simulation: Simulation): SimulationResult {
+  return {
+    id: simulation.id,
+    user_id: simulation.user_id,
+    healthDelta: simulation.health_delta || 0,
+    wealthDelta: simulation.wealth_delta || 0,
+    psychologyDelta: simulation.psychology_delta || 0,
+    created_at: simulation.created_at,
+    // Add default empty cascade effects
+    cascadeEffects: {
+      health: [],
+      wealth: [],
+      psychology: []
+    }
+  };
+}
+
+// Adapter function to convert SimulationParams to CreateSimulationParams
+function adaptParamsToCreateParams(params: SimulationParams): CreateSimulationParams {
+  return {
+    scenario_type: "finance" as ScenarioType, // Default to finance type based on the parameters
+    parameters: {
+      name: params.name,
+      durationMonths: params.durationMonths,
+      initialWealth: params.initialWealth,
+      monthlyContribution: params.monthlyContribution,
+      investmentRiskLevel: params.investmentRiskLevel,
+      healthImpactFactor: params.healthImpactFactor,
+      psychologyImpactFactor: params.psychologyImpactFactor
+    }
+  };
+}
 
 const SimulationCard = () => {
   const { user } = useAuth();
@@ -70,11 +123,15 @@ const SimulationCard = () => {
     setError(null);
     setSimulationResult(null); // Clear previous results
     try {
-      // Ensure user.id is passed if needed by createSimulation
-      const result = await createSimulation(simulationParams, user.id); 
+      // Use the adapter function to convert SimulationParams to CreateSimulationParams
+      const createParams = adaptParamsToCreateParams(simulationParams);
+      // Call createSimulation with the proper parameters
+      const result = await createSimulation(user.id, createParams); 
       if (result) {
-        setSimulationResult(result);
-        setActiveSimulationId(result.id); // Assuming result has an ID
+        // Convert Simulation to SimulationResult
+        const adaptedResult = adaptSimulationToResult(result);
+        setSimulationResult(adaptedResult);
+        setActiveSimulationId(result.id);
         toast({ title: "Simulation Started", description: "Results will update live." });
         // Fetch recent simulations again to include the new one
         fetchRecent();
@@ -94,8 +151,10 @@ const SimulationCard = () => {
   const fetchRecent = useCallback(async () => {
     if (!user) return;
     try {
-      const sims = await listRecentSimulations(user.id); // Assuming user.id is the argument
-      setRecentSimulations(sims);
+      const sims = await listRecentSimulations(user.id);
+      // Convert each Simulation to SimulationResult
+      const adaptedSims = sims.map(adaptSimulationToResult);
+      setRecentSimulations(adaptedSims);
     } catch (err) {
       console.error("Failed to fetch recent simulations:", err);
       // Optionally toast an error
@@ -109,26 +168,24 @@ const SimulationCard = () => {
   useEffect(() => {
     if (!activeSimulationId || !user) return;
 
-    const onUpdate = (update: SimulationResult) => {
+    const onUpdate = (update: any) => {
       console.log('Live simulation update received:', update);
-      setSimulationResult(prev => ({ ...prev, ...update, id: activeSimulationId }));
-      if (update.status === 'completed' || update.status === 'failed') {
-         toast({ title: `Simulation ${update.status}`, description: `Simulation ${activeSimulationId} has ${update.status}.`});
-         // Potentially clear activeSimulationId or fetch final full result
-      }
+      const simulationData = update.new || update;
+      const adaptedUpdate = adaptSimulationToResult(simulationData);
+      
+      setSimulationResult(prev => ({ 
+        ...prev, 
+        ...adaptedUpdate, 
+        id: activeSimulationId 
+      }));
     };
     
-    // Assuming subscribeToSimulationUpdates and unsubscribeFromSimulationUpdates exist and work as intended
-    // And that they take user.id if required for permissioning/filtering
-    const subscription = subscribeToSimulationUpdates(activeSimulationId, onUpdate, user.id);
-
+    // Use the correct subscription function
+    const channel = subscribeSimulations(user.id, onUpdate);
+    
     return () => {
-      if (subscription && typeof subscription.unsubscribe === 'function') {
-        subscription.unsubscribe();
-      } else if (activeSimulationId) {
-        // Fallback if the direct unsubscribe isn't on the returned object
-        unsubscribeFromSimulationUpdates(activeSimulationId);
-      }
+      // Use the correct unsubscribe function
+      unsubscribeSimulations();
     };
   }, [activeSimulationId, user]);
   
@@ -155,7 +212,6 @@ const SimulationCard = () => {
   };
   
   const emblaOptions: EmblaOptionsType = { loop: false, align: 'start' };
-
 
   if (!user) {
     return (
@@ -301,7 +357,6 @@ const SimulationCard = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-             {simulationResult.status && <Badge className="mt-4">Status: {simulationResult.status}</Badge>}
           </div>
         )}
       </CardContent>
@@ -321,7 +376,7 @@ const SimulationCard = () => {
                 <CardDescription className="text-xs">
                   H: {sim.healthDelta}, W: {sim.wealthDelta}, P: {sim.psychologyDelta}
                 </CardDescription>
-                <Button size="xs" variant="link" onClick={() => { setSimulationResult(sim); setShowHistory(false); setActiveSimulationId(sim.id);}}>View</Button>
+                <Button size="sm" variant="link" onClick={() => { setSimulationResult(sim); setShowHistory(false); setActiveSimulationId(sim.id);}}>View</Button>
               </Card>
             )) : <p className="text-sm text-gray-500">No recent simulations found.</p>}
           </div>
@@ -332,7 +387,6 @@ const SimulationCard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </Card>
   );
 };
