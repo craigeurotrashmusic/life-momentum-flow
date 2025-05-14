@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import {
   RealtimeChannel,
@@ -7,7 +7,6 @@ import {
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
   REALTIME_SUBSCRIBE_STATES,
   RealtimePostgresChangesFilter,
-  REALTIME_LISTEN_TYPES, // Re-added this import
 } from '@supabase/supabase-js';
 
 interface RealtimeData<T extends Record<string, any>> {
@@ -36,26 +35,28 @@ export function useRealtime<
       table: tableName,
     };
 
-    const newChannel = supabase.channel(channelName)
-      .on(
-        'postgres_changes', // Kept as string literal, should now work with REALTIME_LISTEN_TYPES imported
-        filterOptions,
-        (payload: RealtimePostgresChangesPayload<T>) => {
-          const a_new = payload.new as T | null;
-          const a_old = payload.old as Partial<T> | null;
-          const a_errors = payload.errors as string[] | null;
+    const channel = supabase.channel(channelName);
+    
+    // Type assertion to help TypeScript understand this is a valid channel operation
+    const newChannel = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+      'postgres_changes',
+      filterOptions,
+      (payload) => {
+        const a_new = payload.new as T | null;
+        const a_old = payload.old as Partial<T> | null;
+        const a_errors = payload.errors as string[] | null;
 
-          setData({ new: a_new, old: a_old, errors: a_errors });
-          callback({ new: a_new, old: a_old, errors: a_errors });
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-          console.log(`Successfully subscribed to ${channelName}`);
-        } else if (err) {
-          console.error(`Error subscribing to ${channelName}:`, err);
-        }
-      });
+        setData({ new: a_new, old: a_old, errors: a_errors });
+        callback({ new: a_new, old: a_old, errors: a_errors });
+      }
+    )
+    .subscribe((status, err) => {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        console.log(`Successfully subscribed to ${channelName}`);
+      } else if (err) {
+        console.error(`Error subscribing to ${channelName}:`, err);
+      }
+    });
 
     return () => {
       if (newChannel) {
@@ -89,21 +90,23 @@ export function useRealtimePostgresChanges<
       table: tableName,
     };
 
-    const newChannel = supabase.channel(channelName)
-      .on(
-        'postgres_changes', // Kept as string literal
-        filterOptions,
-        (payload: RealtimePostgresChangesPayload<T>) => {
-          callback(payload);
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-          console.log(`Successfully subscribed to ${channelName}`);
-        } else if (err) {
-          console.error(`Error subscribing to ${channelName}:`, err);
-        }
-      });
+    const channel = supabase.channel(channelName);
+    
+    // Type assertion to help TypeScript understand this is a valid channel operation
+    const newChannel = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+      'postgres_changes',
+      filterOptions,
+      (payload) => {
+        callback(payload);
+      }
+    )
+    .subscribe((status, err) => {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+        console.log(`Successfully subscribed to ${channelName}`);
+      } else if (err) {
+        console.error(`Error subscribing to ${channelName}:`, err);
+      }
+    });
 
     return () => {
       if (newChannel) {
@@ -130,19 +133,21 @@ export function subscribeToPostgresChanges<
     table: table,
   };
 
-  const channelInstance = supabase.channel(channelName)
-    .on(
-      'postgres_changes', // Kept as string literal
-      filterOptions,
-      callback
-    )
-    .subscribe((status, err) => {
-      if (status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) {
-        console.error(`Subscription error on ${channelName} (${status}):`, err);
-      } else if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
-        console.log(`Successfully subscribed to ${channelName}`);
-      }
-    });
+  const channel = supabase.channel(channelName);
+  
+  // Type assertion to help TypeScript understand this is a valid channel operation
+  const channelInstance = channel.on<'postgres_changes', RealtimePostgresChangesPayload<T>>(
+    'postgres_changes',
+    filterOptions,
+    callback
+  )
+  .subscribe((status, err) => {
+    if (status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) {
+      console.error(`Subscription error on ${channelName} (${status}):`, err);
+    } else if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
+      console.log(`Successfully subscribed to ${channelName}`);
+    }
+  });
 
   return {
     unsubscribe: () => {
