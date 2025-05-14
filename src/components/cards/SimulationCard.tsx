@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { Options as EmblaOptionsType } from 'embla-carousel-react'; // Fix import to use named import
+import type { EmblaOptionsType } from 'embla-carousel-react'; // Corrected import
 import {
   Card,
   CardContent,
@@ -121,19 +121,15 @@ const SimulationCard = () => {
     }
     setIsLoading(true);
     setError(null);
-    setSimulationResult(null); // Clear previous results
+    setSimulationResult(null); 
     try {
-      // Use the adapter function to convert SimulationParams to CreateSimulationParams
       const createParams = adaptParamsToCreateParams(simulationParams);
-      // Call createSimulation with the proper parameters
       const result = await createSimulation(user.id, createParams); 
       if (result) {
-        // Convert Simulation to SimulationResult
         const adaptedResult = adaptSimulationToResult(result);
         setSimulationResult(adaptedResult);
         setActiveSimulationId(result.id);
         toast({ title: "Simulation Started", description: "Results will update live." });
-        // Fetch recent simulations again to include the new one
         fetchRecent();
       } else {
         setError("Failed to start simulation. Please try again.");
@@ -152,12 +148,10 @@ const SimulationCard = () => {
     if (!user) return;
     try {
       const sims = await listRecentSimulations(user.id);
-      // Convert each Simulation to SimulationResult
       const adaptedSims = sims.map(adaptSimulationToResult);
       setRecentSimulations(adaptedSims);
     } catch (err) {
       console.error("Failed to fetch recent simulations:", err);
-      // Optionally toast an error
     }
   }, [user]);
 
@@ -170,22 +164,27 @@ const SimulationCard = () => {
 
     const onUpdate = (update: any) => {
       console.log('Live simulation update received:', update);
-      const simulationData = update.new || update;
-      const adaptedUpdate = adaptSimulationToResult(simulationData);
-      
-      setSimulationResult(prev => ({ 
-        ...prev, 
-        ...adaptedUpdate, 
-        id: activeSimulationId 
-      }));
+      // Ensure the update structure matches Simulation or RealtimePostgresChangesPayload<Simulation>
+      const simulationData = update.new ? update.new : update; // Handle direct object or payload
+      if (simulationData && simulationData.id === activeSimulationId) { // Check if update is for active sim
+        const adaptedUpdate = adaptSimulationToResult(simulationData);
+        
+        setSimulationResult(prev => {
+          // If prev exists and has an id, keep it, otherwise use activeSimulationId
+          const currentId = prev?.id || activeSimulationId; 
+          return { 
+            ...prev, 
+            ...adaptedUpdate, 
+            id: currentId // Ensure ID is preserved correctly
+          };
+        });
+      }
     };
     
-    // Use the correct subscription function
-    const channel = subscribeSimulations(user.id, onUpdate);
+    const { unsubscribe } = subscribeSimulations(user.id, onUpdate); // Assuming subscribeSimulations returns an unsubscribe function
     
     return () => {
-      // Use the correct unsubscribe function
-      unsubscribeSimulations();
+      unsubscribe(); // Call the unsubscribe function
     };
   }, [activeSimulationId, user]);
   
@@ -297,7 +296,7 @@ const SimulationCard = () => {
         
         {simulationResult && (
           <div className="mt-6 p-4 border rounded-md bg-slate-50">
-            <h3 className="text-xl font-semibold mb-3">Simulation Results: {simulationResult.id}</h3>
+            <h3 className="text-xl font-semibold mb-3">Simulation Results (ID: {simulationResult.id || 'N/A'})</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
               <div className="p-3 bg-white rounded shadow">
                 <h4 className="font-medium text-sm flex items-center"><HeartPulseIcon className="mr-2 h-5 w-5 text-pink-500"/>Health Impact</h4>
@@ -319,12 +318,15 @@ const SimulationCard = () => {
               </div>
             </div>
             
-            {simulationResult.cascadeEffects && Object.keys(simulationResult.cascadeEffects).length > 0 && (
+            {simulationResult.cascadeEffects && Object.keys(simulationResult.cascadeEffects).length > 0 && 
+              (Object.values(simulationResult.cascadeEffects).some(arr => arr && arr.length > 0)) && (
               <div className="my-4">
                 <h4 className="font-semibold mb-2">Potential Cascade Effects:</h4>
                 <Carousel opts={emblaOptions} className="w-full">
                   <CarouselContent>
-                    {Object.entries(simulationResult.cascadeEffects).map(([pillar, effects]) => (
+                    {Object.entries(simulationResult.cascadeEffects)
+                      .filter(([_, effects]) => effects && effects.length > 0) // Filter out empty effect arrays
+                      .map(([pillar, effects]) => (
                       <CarouselItem key={pillar} className="md:basis-1/2 lg:basis-1/3">
                         <div className="p-1">
                           <Card>
@@ -372,11 +374,15 @@ const SimulationCard = () => {
           <div className="max-h-96 overflow-y-auto space-y-3 p-1">
             {recentSimulations.length > 0 ? recentSimulations.map(sim => (
               <Card key={sim.id} className="p-3">
-                <CardTitle className="text-sm">{sim.id}</CardTitle> {/* Displaying ID as title for simplicity */}
+                <CardTitle className="text-sm">ID: {sim.id}</CardTitle>
                 <CardDescription className="text-xs">
                   H: {sim.healthDelta}, W: {sim.wealthDelta}, P: {sim.psychologyDelta}
                 </CardDescription>
-                <Button size="sm" variant="link" onClick={() => { setSimulationResult(sim); setShowHistory(false); setActiveSimulationId(sim.id);}}>View</Button>
+                <Button size="sm" variant="link" onClick={() => { 
+                    setSimulationResult(sim); 
+                    setShowHistory(false); 
+                    setActiveSimulationId(sim.id);
+                }}>View</Button>
               </Card>
             )) : <p className="text-sm text-gray-500">No recent simulations found.</p>}
           </div>
