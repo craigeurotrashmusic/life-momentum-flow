@@ -1,20 +1,38 @@
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PlayCircle, BarChart3, Brain, DollarSign, HeartPulse, Users, Zap, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Progress } from '@/components/ui/progress';
 import { toast } from '@/components/ui/sonner';
-import LifeCard from './LifeCard'; // Assuming LifeCard is in the same directory or adjust path
+import LifeCard from './LifeCard';
 import { useAuth } from '@/hooks/useAuth';
-// import { supabase } from '@/lib/supabaseClient'; // Already imported if needed by API calls
-import { createSimulation, fetchRecentSimulations, Simulation, ScenarioType, ScenarioParameter, SimulationResult } from '@/lib/api/simulation'; // Assuming these exist
-import Autoplay from "embla-carousel-autoplay"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
-import type { EmblaOptionsType, UseEmblaCarouselType } from 'embla-carousel-react'; // Corrected import
+import { createSimulation, listRecentSimulations, Simulation, ScenarioType } from '@/lib/api/simulation';
+import Autoplay from "embla-carousel-autoplay";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+import { cn } from "@/lib/utils"; // Import cn
+
+// Local type definitions
+interface ScenarioParameter {
+  id: string;
+  label: string;
+  type: 'number' | 'text'; // Add other types if necessary
+  defaultValue: string | number;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
+interface DisplayableSimulationResult {
+  summary: string;
+  health_delta: number;
+  wealth_delta: number;
+  psychology_delta: number;
+  timeline_preview: Array<{ month: number; event: string }>;
+  warnings: Array<{ type: string; message: string }>;
+}
 
 interface Scenario {
   type: ScenarioType;
@@ -22,7 +40,7 @@ interface Scenario {
   description: string;
   icon: React.ElementType;
   parameters: ScenarioParameter[];
-  color: string; // e.g. "text-green-500" or "bg-blue-500"
+  color: string;
 }
 
 const scenarios: Scenario[] = [
@@ -32,9 +50,9 @@ const scenarios: Scenario[] = [
     description: 'Simulate the impact of switching to a new industry or role.',
     icon: Brain,
     parameters: [
-      { id: 'new_industry_stress', label: 'New Industry Stress (1-10)', type: 'number', defaultValue: 6 },
-      { id: 'learning_curve_hours', label: 'Weekly Learning Hours', type: 'number', defaultValue: 10 },
-      { id: 'salary_change_percentage', label: 'Salary Change (%)', type: 'number', defaultValue: -10 },
+      { id: 'new_industry_stress', label: 'New Industry Stress (1-10)', type: 'number', defaultValue: 6, min: 1, max: 10 },
+      { id: 'learning_curve_hours', label: 'Weekly Learning Hours', type: 'number', defaultValue: 10, min: 0, max: 40 },
+      { id: 'salary_change_percentage', label: 'Salary Change (%)', type: 'number', defaultValue: -10, min: -100, max: 100 },
     ],
     color: "text-blue-500",
   },
@@ -44,9 +62,9 @@ const scenarios: Scenario[] = [
     description: 'Explore outcomes of different financial investment approaches.',
     icon: DollarSign,
     parameters: [
-      { id: 'risk_level', label: 'Risk Level (1-10)', type: 'number', defaultValue: 7 },
-      { id: 'investment_amount', label: 'Monthly Investment ($)', type: 'number', defaultValue: 500 },
-      { id: 'time_horizon_years', label: 'Time Horizon (Years)', type: 'number', defaultValue: 10 },
+      { id: 'risk_level', label: 'Risk Level (1-10)', type: 'number', defaultValue: 7, min: 1, max: 10 },
+      { id: 'investment_amount', label: 'Monthly Investment ($)', type: 'number', defaultValue: 500, min: 0 },
+      { id: 'time_horizon_years', label: 'Time Horizon (Years)', type: 'number', defaultValue: 10, min: 1, max: 50 },
     ],
     color: "text-green-500",
   },
@@ -56,9 +74,9 @@ const scenarios: Scenario[] = [
     description: 'Model effects of a new fitness or diet plan.',
     icon: HeartPulse,
     parameters: [
-      { id: 'commitment_level', label: 'Commitment (1-10)', type: 'number', defaultValue: 8 },
-      { id: 'diet_change_intensity', label: 'Diet Change Intensity (1-10)', type: 'number', defaultValue: 5 },
-      { id: 'weekly_exercise_hours', label: 'Weekly Exercise Hours', type: 'number', defaultValue: 5 },
+      { id: 'commitment_level', label: 'Commitment (1-10)', type: 'number', defaultValue: 8, min: 1, max: 10 },
+      { id: 'diet_change_intensity', label: 'Diet Change Intensity (1-10)', type: 'number', defaultValue: 5, min: 1, max: 10 },
+      { id: 'weekly_exercise_hours', label: 'Weekly Exercise Hours', type: 'number', defaultValue: 5, min: 0, max: 20 },
     ],
     color: "text-red-500",
   },
@@ -68,8 +86,8 @@ const scenarios: Scenario[] = [
     description: 'Simulate impacts of major relationship shifts.',
     icon: Users,
     parameters: [
-      { id: 'communication_effort', label: 'Communication Effort (1-10)', type: 'number', defaultValue: 7 },
-      { id: 'shared_activities_hours', label: 'Weekly Shared Activities', type: 'number', defaultValue: 8 },
+      { id: 'communication_effort', label: 'Communication Effort (1-10)', type: 'number', defaultValue: 7, min: 1, max: 10 },
+      { id: 'shared_activities_hours', label: 'Weekly Shared Activities', type: 'number', defaultValue: 8, min: 0, max: 30 },
     ],
     color: "text-purple-500",
   },
@@ -80,25 +98,23 @@ const SimulationCard = () => {
   const { user } = useAuth();
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(scenarios[0]);
   const [parameters, setParameters] = useState<Record<string, any>>({});
-  const [simulationResult, setSimulationResult] = useState<SimulationResult | null>(null);
+  const [simulationResult, setSimulationResult] = useState<DisplayableSimulationResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [recentSimulations, setRecentSimulations] = useState<Simulation[]>([]);
   
   const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }));
-  const [api, setApi] = useState<UseEmblaCarouselType | undefined>(); // Corrected type
+  const [emblaApi, setEmblaApi] = useState<CarouselApi | undefined>();
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
-    if (!api) return;
-    setCurrentSlide(api.selectedScrollSnap());
-    api.on("select", () => setCurrentSlide(api.selectedScrollSnap()));
-  }, [api]);
+    if (!emblaApi) return;
+    setCurrentSlide(emblaApi.selectedScrollSnap());
+    emblaApi.on("select", () => setCurrentSlide(emblaApi.selectedScrollSnap()));
+  }, [emblaApi]);
 
   useEffect(() => {
     if (user?.id) {
-      fetchRecentSimulations(user.id, 3).then(({ data }) => {
-        if (data) setRecentSimulations(data);
-      });
+      listRecentSimulations(user.id, 3).then(setRecentSimulations);
     }
   }, [user?.id]);
 
@@ -114,7 +130,7 @@ const SimulationCard = () => {
   }, [selectedScenario]);
 
   const handleScenarioChange = (scenarioType: string) => {
-    const scenario = scenarios.find(s => s.type === scenarioType);
+    const scenario = scenarios.find(s => s.type === scenarioType as ScenarioType);
     if (scenario) {
       setSelectedScenario(scenario);
     }
@@ -132,61 +148,72 @@ const SimulationCard = () => {
     setIsLoading(true);
     setSimulationResult(null);
 
-    const simData = {
-      user_id: user.id,
-      scenario_type: selectedScenario.type,
-      parameters: parameters,
+    // Mocked results for demonstration - these provide UI-specific details
+    // The core deltas will also be part of this, to be passed to createSimulation
+    const mockResultForDisplay: DisplayableSimulationResult = {
+      summary: `Simulating ${selectedScenario.name}... Outcome looks promising.`,
+      health_delta: Math.random() * 20 - 10,
+      wealth_delta: Math.random() * 20 - 10,
+      psychology_delta: Math.random() * 20 - 10,
+      timeline_preview: [
+        { month: 1, event: "Initial adjustment phase." },
+        { month: 3, event: "First signs of impact noted." },
+        { month: 6, event: "Significant shift observed." },
+      ],
+      warnings: Math.random() > 0.7 ? [{ type: "HighRisk", message: "This path has high volatility." }] : [],
     };
+    
+    // Simulate API delay for the "engine" part
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    // This is where you'd call your actual simulation engine/API.
-    // For now, we'll mock it and then call createSimulation to store it.
     try {
-      // Mocked results for demonstration
-      const mockResult: SimulationResult = {
-        summary: `Simulating ${selectedScenario.name}... Outcome looks promising.`,
-        health_impact: Math.random() * 20 - 10, // Random change between -10 and +10
-        wealth_impact: Math.random() * 20 - 10,
-        psychology_impact: Math.random() * 20 - 10,
-        timeline_preview: [
-          { month: 1, event: "Initial adjustment phase." },
-          { month: 3, event: "First signs of impact noted." },
-          { month: 6, event: "Significant shift observed." },
-        ],
-        warnings: Math.random() > 0.7 ? [{ type: "HighRisk", message: "This path has high volatility." }] : [],
-      };
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      const { data: storedSimulation, error } = await createSimulation({
-        ...simData,
-        health_delta: mockResult.health_impact,
-        wealth_delta: mockResult.wealth_impact,
-        psychology_delta: mockResult.psychology_impact,
+      const storedSimulation = await createSimulation(user.id, {
+        scenario_type: selectedScenario.type,
+        parameters: parameters,
+        health_delta: mockResultForDisplay.health_delta,
+        wealth_delta: mockResultForDisplay.wealth_delta,
+        psychology_delta: mockResultForDisplay.psychology_delta,
       });
 
-      if (error || !storedSimulation) {
-        toast.error(`Failed to store simulation: ${error?.message || 'Unknown error'}`);
-        setSimulationResult({ ...mockResult, summary: "Failed to store simulation results."}); // Show mock but indicate store failure
-      } else {
-        setSimulationResult(mockResult);
-        toast.success(`${selectedScenario.name} simulated and recorded!`);
-        // Refresh recent simulations
+      if (storedSimulation) {
+        setSimulationResult({
+          ...mockResultForDisplay, // Keep timeline, warnings from mock
+          health_delta: storedSimulation.health_delta ?? 0, // Use actual stored deltas
+          wealth_delta: storedSimulation.wealth_delta ?? 0,
+          psychology_delta: storedSimulation.psychology_delta ?? 0,
+          summary: `${selectedScenario.name} simulated successfully and recorded!`, // Update summary
+        });
+        // Toast for success is handled by createSimulation
         if (user?.id) {
-            fetchRecentSimulations(user.id, 3).then(({ data }) => {
-            if (data) setRecentSimulations(data);
-            });
+          listRecentSimulations(user.id, 3).then(setRecentSimulations);
         }
+      } else {
+        // Toast for error is handled by createSimulation
+        // Optionally set a local error state or show a generic message in the card
+        setSimulationResult({
+            summary: "Failed to store simulation results. Please try again.",
+            health_delta: 0,
+            wealth_delta: 0,
+            psychology_delta: 0,
+            timeline_preview: [],
+            warnings: [{type: "Error", message: "Could not save simulation."}]
+        });
       }
     } catch (e: any) {
       toast.error(`Simulation error: ${e.message}`);
-      setSimulationResult({ summary: "An error occurred during simulation.", health_impact:0, wealth_impact:0, psychology_impact:0, timeline_preview:[], warnings:[] });
+      setSimulationResult({ 
+        summary: "An error occurred during simulation.", 
+        health_delta:0, wealth_delta:0, psychology_delta:0, 
+        timeline_preview:[], 
+        warnings:[{type: "Critical", message: e.message || "Unknown simulation error"}] 
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const ImpactDisplay: React.FC<{ label: string; value: number }> = ({ label, value }) => {
+  const ImpactDisplay: React.FC<{ label: string; value: number | null }> = ({ label, value }) => {
+    if (value === null) return null;
     const color = value > 0 ? 'text-green-500' : value < 0 ? 'text-red-500' : 'text-muted-foreground';
     const sign = value > 0 ? '+' : '';
     return (
@@ -201,8 +228,8 @@ const SimulationCard = () => {
   return (
     <LifeCard
       title="Life Simulation"
-      icon={<Zap />}
-      color="bg-gradient-to-br from-indigo-900/30 to-purple-900/30"
+      icon={<Zap className="text-purple-400"/>}
+      color="bg-gradient-to-br from-indigo-900/30 to-purple-900/30" // Example color
       expandable
     >
       <div className="space-y-6 p-2">
@@ -244,8 +271,8 @@ const SimulationCard = () => {
                     <Input
                         id={`${param.id}-range`}
                         type="range"
-                        min={param.min ?? (param.defaultValue > 10 ? 0 : 1)} // Basic min heuristic
-                        max={param.max ?? (param.defaultValue > 10 ? param.defaultValue * 2 : 10)} // Basic max heuristic
+                        min={param.min ?? (Number(param.defaultValue) > 10 ? 0 : 1)} 
+                        max={param.max ?? (Number(param.defaultValue) > 10 ? Number(param.defaultValue) * 2 : 10)} 
                         step={param.step ?? 1}
                         value={parameters[param.id] || param.defaultValue}
                         onChange={e => handleParameterChange(param.id, parseFloat(e.target.value))}
@@ -257,7 +284,7 @@ const SimulationCard = () => {
           </div>
         )}
 
-        <Button onClick={runSimulation} disabled={isLoading || !selectedScenario} className="w-full py-3 text-base">
+        <Button onClick={runSimulation} disabled={isLoading || !selectedScenario} className="w-full py-3 text-base bg-purple-600 hover:bg-purple-700">
           <PlayCircle className="mr-2 h-5 w-5" />
           {isLoading ? 'Simulating...' : `Run ${selectedScenario?.name || 'Simulation'}`}
         </Button>
@@ -272,9 +299,9 @@ const SimulationCard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-3 gap-2">
-                <ImpactDisplay label="Health" value={simulationResult.health_impact} />
-                <ImpactDisplay label="Wealth" value={simulationResult.wealth_impact} />
-                <ImpactDisplay label="Psychology" value={simulationResult.psychology_impact} />
+                <ImpactDisplay label="Health" value={simulationResult.health_delta} />
+                <ImpactDisplay label="Wealth" value={simulationResult.wealth_delta} />
+                <ImpactDisplay label="Psychology" value={simulationResult.psychology_delta} />
               </div>
               {simulationResult.timeline_preview && simulationResult.timeline_preview.length > 0 && (
                 <div>
@@ -309,10 +336,10 @@ const SimulationCard = () => {
                     opts={{ align: "start", loop: recentSimulations.length > 1 }} 
                     plugins={[plugin.current]}
                     className="w-full"
-                    setApi={setApi}
+                    setApi={setEmblaApi}
                 >
                     <CarouselContent>
-                        {recentSimulations.map((sim, index) => (
+                        {recentSimulations.map((sim) => (
                             <CarouselItem key={sim.id} className="md:basis-1/2 lg:basis-1/3">
                                 <Card className="h-full flex flex-col bg-background/20 hover:bg-background/40 transition-colors">
                                     <CardHeader className="pb-2">
@@ -324,18 +351,18 @@ const SimulationCard = () => {
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="text-xs space-y-1 flex-grow">
-                                       <p>Health: <span className={cn(sim.health_delta > 0 ? "text-green-400" : sim.health_delta < 0 ? "text-red-400" : "")}>{sim.health_delta?.toFixed(1)}</span></p>
-                                       <p>Wealth: <span className={cn(sim.wealth_delta > 0 ? "text-green-400" : sim.wealth_delta < 0 ? "text-red-400" : "")}>{sim.wealth_delta?.toFixed(1)}</span></p>
-                                       <p>Psych: <span className={cn(sim.psychology_delta > 0 ? "text-green-400" : sim.psychology_delta < 0 ? "text-red-400" : "")}>{sim.psychology_delta?.toFixed(1)}</span></p>
+                                       <p>Health: <span className={cn(sim.health_delta && sim.health_delta > 0 ? "text-green-400" : sim.health_delta && sim.health_delta < 0 ? "text-red-400" : "")}>{sim.health_delta?.toFixed(1)}</span></p>
+                                       <p>Wealth: <span className={cn(sim.wealth_delta && sim.wealth_delta > 0 ? "text-green-400" : sim.wealth_delta && sim.wealth_delta < 0 ? "text-red-400" : "")}>{sim.wealth_delta?.toFixed(1)}</span></p>
+                                       <p>Psych: <span className={cn(sim.psychology_delta && sim.psychology_delta > 0 ? "text-green-400" : sim.psychology_delta && sim.psychology_delta < 0 ? "text-red-400" : "")}>{sim.psychology_delta?.toFixed(1)}</span></p>
                                     </CardContent>
                                     <CardFooter className="pt-2">
-                                        <Button size="xs" variant="link" className="text-xs p-0 h-auto" onClick={() => {
+                                        <Button size="sm" variant="link" className="text-xs p-0 h-auto" onClick={() => {
                                             const scenario = scenarios.find(s => s.type === sim.scenario_type);
                                             if (scenario) setSelectedScenario(scenario);
                                             if (sim.parameters) setParameters(sim.parameters as Record<string, any>);
                                             setSimulationResult(null); // Clear previous live result
                                             toast.info(`Loaded parameters from simulation on ${new Date(sim.created_at).toLocaleDateString()}`);
-                                            if (api) api.scrollTo(0, true); // Scroll main content to top if needed
+                                            if (emblaApi) emblaApi.scrollTo(0, true); 
                                         }}>
                                             Reload Params
                                         </Button>
@@ -351,12 +378,13 @@ const SimulationCard = () => {
                         </>
                     )}
                 </Carousel>
-                <div className="text-center text-xs text-muted-foreground mt-2">
-                    Slide {currentSlide + 1} of {recentSimulations.length}
-                </div>
+                {recentSimulations.length > 0 && (
+                    <div className="text-center text-xs text-muted-foreground mt-2">
+                        Slide {currentSlide + 1} of {recentSimulations.length}
+                    </div>
+                )}
             </div>
         )}
-
       </div>
     </LifeCard>
   );

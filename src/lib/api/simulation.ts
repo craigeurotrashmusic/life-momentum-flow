@@ -1,9 +1,18 @@
 import { supabase } from '../supabaseClient';
 import { toast } from '@/hooks/use-toast';
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js'; 
+import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js';
 
-export type ScenarioType = "sleep" | "finance" | "workout" | "diet" | "custom";
+export type ScenarioType =
+  | "sleep"
+  | "finance"
+  | "workout"
+  | "diet"
+  | "custom"
+  | "career_change"
+  | "investment_strategy"
+  | "health_intervention"
+  | "relationship_change";
 
 // Matches the Supabase table structure
 export interface Simulation {
@@ -17,10 +26,13 @@ export interface Simulation {
   created_at: string; // timestamptz
 }
 
-// For creating a new simulation, deltas are typically not provided initially
+// For creating a new simulation, deltas are provided from the frontend
 export interface CreateSimulationParams {
   scenario_type: ScenarioType;
   parameters: Record<string, any>;
+  health_delta: number;
+  wealth_delta: number;
+  psychology_delta: number;
   // user_id will be handled by RLS or passed explicitly if needed from a secure context
 }
 
@@ -28,8 +40,8 @@ export interface CreateSimulationParams {
 // It's used by use-simulation-socket.ts and DriftCorrection.tsx
 export interface SimulationResult {
   id: string;
-  user_id?: string; 
-  simulation_params_id?: string; 
+  user_id?: string;
+  simulation_params_id?: string;
   healthDelta: number;
   wealthDelta: number;
   psychologyDelta: number;
@@ -44,22 +56,16 @@ export interface SimulationResult {
 // Function to create a new simulation
 export const createSimulation = async (userId: string, params: CreateSimulationParams): Promise<Simulation | null> => {
   console.log("Creating simulation with params:", params, "for user:", userId);
-  
-  // Simulate processing and calculating deltas (this would happen in a backend/edge function ideally)
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const mockDeltas = {
-      health_delta: params.scenario_type === 'sleep' ? -Math.floor(Math.random() * 10) : Math.floor(Math.random() * 5) - 2,
-      wealth_delta: params.scenario_type === 'finance' ? -Math.floor(Math.random() * 100) : Math.floor(Math.random() * 50) - 25,
-      psychology_delta: params.scenario_type === 'diet' ? Math.floor(Math.random() * 8) - 4 : -Math.floor(Math.random() * 12),
-  };
 
   const { data, error } = await supabase
-    .from('simulations') 
-    .insert([{ 
-      user_id: userId, 
+    .from('simulations')
+    .insert([{
+      user_id: userId,
       scenario_type: params.scenario_type,
       parameters: params.parameters,
-      ...mockDeltas 
+      health_delta: params.health_delta,
+      wealth_delta: params.wealth_delta,
+      psychology_delta: params.psychology_delta,
     }])
     .select()
     .single();
