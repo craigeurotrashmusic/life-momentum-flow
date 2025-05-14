@@ -116,10 +116,25 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   
   const [userPreferences, setUserPreferences] = useState<UserPreferences>(() => {
     const localPrefs = localStorage.getItem('userPreferences');
-    // Ensure default structure if localPrefs are incomplete or malformed
     try {
         const parsedPrefs = localPrefs ? JSON.parse(localPrefs) : {};
-        return { ...defaultUserPreferences, ...parsedPrefs, userId: parsedPrefs.userId || user?.id };
+        return {
+          ...defaultUserPreferences,
+          ...parsedPrefs,
+          userId: parsedPrefs.userId || user?.id,
+          notificationChannels: {
+            ...defaultUserPreferences.notificationChannels,
+            ...(parsedPrefs.notificationChannels || {}),
+          },
+          quietHours: {
+            ...defaultUserPreferences.quietHours,
+            ...(parsedPrefs.quietHours || {}),
+          },
+          integrations: {
+            ...defaultUserPreferences.integrations,
+            ...(parsedPrefs.integrations || {}),
+          },
+        };
     } catch (e) {
         console.error("Failed to parse user preferences from localStorage", e);
         return { ...defaultUserPreferences, userId: user?.id };
@@ -323,8 +338,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   };
   
   const fetchUserPreferences = useCallback(async () => {
-    if (!userPreferences.userId) { // Check if userId from state is available
-      // toast.info("User ID not available for fetching preferences."); // Optional: inform user
+    if (!userPreferences.userId) {
       return;
     }
     
@@ -332,20 +346,38 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       const { data, error } = await supabase
-        .from('user_preferences') // This should now be correctly typed
+        .from('user_preferences')
         .select('*')
-        .eq('user_id', userPreferences.userId) // Use userId from state
-        .maybeSingle(); // Use maybeSingle to handle no row found gracefully
+        .eq('user_id', userPreferences.userId)
+        .maybeSingle();
       
       if (data) {
-        // Merge fetched data with defaults to ensure all fields are present
-        setUserPreferences(prev => ({ ...defaultUserPreferences, ...prev, ...data, userId: userPreferences.userId, isLoading: false }));
-      } else if (error) { // Removed check for error.code !== 'PGRST116' as maybeSingle handles it
+        const fetchedPreferences = data as any; // Cast to any to handle potential Json types from Supabase
+
+        setUserPreferences(prev => ({
+          ...defaultUserPreferences, // Start with defaults
+          ...prev, // Spread previous state to keep any non-DB related local state
+          userId: userPreferences.userId, // Preserve current userId
+          nudgeFrequency: typeof fetchedPreferences.nudge_frequency === 'number' 
+            ? fetchedPreferences.nudge_frequency 
+            : prev.nudgeFrequency,
+          notificationChannels: typeof fetchedPreferences.notification_channels === 'object' && fetchedPreferences.notification_channels !== null
+            ? { ...defaultUserPreferences.notificationChannels, ...fetchedPreferences.notification_channels }
+            : prev.notificationChannels,
+          quietHours: typeof fetchedPreferences.quiet_hours === 'object' && fetchedPreferences.quiet_hours !== null
+            ? { ...defaultUserPreferences.quietHours, ...fetchedPreferences.quiet_hours }
+            : prev.quietHours,
+          integrations: typeof fetchedPreferences.integrations === 'object' && fetchedPreferences.integrations !== null
+            ? { ...defaultUserPreferences.integrations, ...fetchedPreferences.integrations }
+            : prev.integrations,
+          isLoading: false,
+        }));
+      } else if (error) {
         toast.error(`Failed to fetch user preferences: ${error.message}`);
         console.error('Failed to fetch user preferences:', error);
         setUserPreferences(prev => ({ ...prev, isLoading: false }));
       } else {
-        // No data found, ensure defaults are set (especially if it's a new user)
+        // No data found, ensure defaults are set for this user
         setUserPreferences(prev => ({ ...defaultUserPreferences, userId: userPreferences.userId, isLoading: false }));
       }
     } catch (error: any) {
@@ -353,7 +385,7 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
       console.error('Failed to fetch user preferences:', error);
       setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userPreferences.userId]); // Depend on userId from state
+  }, [userPreferences.userId]);
 
   const saveUserPreferences = async (): Promise<void> => {
     if (!userPreferences.userId) {
@@ -363,27 +395,32 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     
     setUserPreferences(prev => ({ ...prev, isLoading: true }));
     
+    // Prepare data for Supabase, ensuring it matches the DB schema
     const preferencesToSave = {
-      ...userPreferences,
-      user_id: userPreferences.userId, // Ensure user_id is included for Supabase
+      user_id: userPreferences.userId,
+      nudge_frequency: userPreferences.nudgeFrequency,
+      notification_channels: userPreferences.notificationChannels,
+      quiet_hours: userPreferences.quietHours,
+      integrations: userPreferences.integrations,
+      // updated_at will be handled by the DB trigger or default now()
     };
-    // Remove client-side only flags like isLoading before saving
-    delete (preferencesToSave as any).isLoading; 
-
 
     try {
       const { error } = await supabase
-        .from('user_preferences') // This should now be correctly typed
-        .upsert(preferencesToSave);
+        .from('user_preferences')
+        .upsert(preferencesToSave, { onConflict: 'user_id' }); // Specify onConflict for upsert
 
       if (error) {
         toast.error(`Failed to save preferences: ${error.message}`);
         console.error('Failed to save preferences:', error);
       } else {
         toast.success("Preferences saved successfully!");
-        // Fetch preferences again to ensure context is aligned with DB, or merge locally
-        // For simplicity, local merge assumed by successful save.
-        setUserPreferences(prev => ({ ...prev, ...preferencesToSave, isLoading: false }));
+        // Update local state with what was saved, ensuring isLoading is reset
+        setUserPreferences(prev => ({ 
+          ...prev, 
+          // spread the successfully saved values back if needed, though upsert returns nothing on success by default
+          isLoading: false 
+        }));
       }
     } catch (error: any) {
       toast.error(`Failed to save preferences: ${error.message}`);
@@ -470,26 +507,4 @@ export const useNudge = () => {
   return context;
 };
 
-// Placed defaultUserPreferences inside NudgeProvider or ensure it's correctly scoped if used within fetch/save directly.
-// For broader use within the file, define it at the top level or pass as needed.
-const defaultUserPreferences: UserPreferences = {
-  userId: undefined,
-  nudgeFrequency: 3,
-  notificationChannels: {
-    inApp: true,
-    push: true,
-    email: false,
-    googleCalendar: false,
-    googleTasks: false,
-  },
-  quietHours: {
-    start: "22:00",
-    end: "07:00",
-    enabled: true
-  },
-  integrations: {
-    googleCalendar: false,
-    googleTasks: false
-  },
-  isLoading: false,
-};
+// The second defaultUserPreferences const that was here has been removed.

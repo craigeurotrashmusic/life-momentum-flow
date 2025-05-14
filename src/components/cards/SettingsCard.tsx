@@ -62,7 +62,28 @@ const SettingsCard = () => {
 
   // Update local state when context changes (e.g., after fetching)
   React.useEffect(() => {
-    setLocalPreferences(userPreferences);
+    // Ensure localPreferences are deeply merged to avoid losing nested object structures
+    setLocalPreferences(prevLocal => ({
+        ...defaultUserPreferences, // Base defaults
+        ...userPreferences, // Context preferences
+        ...prevLocal, // Current local edits (if any, to not override unsaved changes by context update directly)
+        // Explicitly merge nested objects from userPreferences to ensure they are up-to-date
+        notificationChannels: {
+            ...defaultUserPreferences.notificationChannels,
+            ...(userPreferences.notificationChannels || {}),
+            ...(prevLocal.notificationChannels || {}),
+        },
+        quietHours: {
+            ...defaultUserPreferences.quietHours,
+            ...(userPreferences.quietHours || {}),
+            ...(prevLocal.quietHours || {}),
+        },
+        integrations: {
+            ...defaultUserPreferences.integrations,
+            ...(userPreferences.integrations || {}),
+            ...(prevLocal.integrations || {}),
+        },
+    }));
   }, [userPreferences]);
 
   const handleFrequencyChange = (value: number[]) => {
@@ -154,7 +175,7 @@ const SettingsCard = () => {
           Adjust how often you receive nudges. Current: {localPreferences.nudgeFrequency} (Lower is less frequent)
         </p>
         <Slider
-          defaultValue={[localPreferences.nudgeFrequency]}
+          defaultValue={[localPreferences?.nudgeFrequency ?? defaultUserPreferences.nudgeFrequency]}
           min={1}
           max={5}
           step={1}
@@ -167,9 +188,9 @@ const SettingsCard = () => {
       <SettingsSection title="Notification Channels">
         {(Object.keys(channelLabels) as NotificationChannel[]).map((channel) => (
           <div key={channel} className="flex items-center justify-between">
-            <Label htmlFor={String(channel)} className="text-sm text-foreground">{channelLabels[channel]}</Label> {/* Ensure ID is string */}
+            <Label htmlFor={String(channel)} className="text-sm text-foreground">{channelLabels[channel]}</Label>
             <Switch
-              id={String(channel)} // Ensure ID is string
+              id={String(channel)}
               checked={
                 (channel === 'googleCalendar' || channel === 'googleTasks') 
                 ? !!localPreferences.integrations?.[channel] 
@@ -197,7 +218,6 @@ const SettingsCard = () => {
             startTime={localPreferences.quietHours.start}
             endTime={localPreferences.quietHours.end}
             onChange={({start, end}) => handleTimeRangeChange(start, end)}
-            disabled={isLoadingPreferences}
           />
         )}
       </SettingsSection>
