@@ -1,14 +1,11 @@
 
-import { createClient } from '@supabase/supabase-js';
+// Import and re-export the Supabase client from the Lovable-managed integration file.
+// This ensures the correct Supabase URL and Anon Key are used.
+import { supabase as integrationSupabase } from '@/integrations/supabase/client';
 
-// Use Vite's import.meta.env instead of process.env for environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'YOUR_SUPABASE_URL';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+export const supabase = integrationSupabase;
 
-if (supabaseUrl === 'YOUR_SUPABASE_URL' || supabaseAnonKey === 'YOUR_SUPABASE_ANON_KEY') {
-  console.warn(
-    'Supabase URL or Anon Key is not configured. Please check your environment variables or Supabase integration setup.'
-  );
-}
+// The original code that relied on Vite environment variables is removed
+// as it was causing issues in the Lovable preview environment.
+// console.warn messages related to missing env vars are also no longer needed here.
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
