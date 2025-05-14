@@ -2,6 +2,21 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { supabase } from '@/lib/supabaseClient';
 import { toast } from '@/components/ui/sonner';
 import { useAuth } from '@/hooks/useAuth';
+import { useIsMobile } from '@/hooks/use-mobile'; // Added import for useIsMobile
+import {
+  Nudge,
+  FlowPeriod,
+  NudgeHistoryItem,
+  UserPreferences,
+  NotificationChannel,
+  NotificationChannelStatus,
+  QuietHours,
+  NudgeEvent,
+  FlowStateData,
+  EmotionalState,
+  NudgeType
+} from './types'; // Import all necessary types
+import { generatePersonalizedNudge } from './personalization'; // Import personalized nudge generator
 
 // Mock nudges for demonstration
 const mockNudges: Nudge[] = [
@@ -12,83 +27,29 @@ const mockNudges: Nudge[] = [
     priority: 4,
     timestamp: new Date()
   },
-  {
-    id: '2',
-    message: "You've been sitting for 45 minutes. A quick 2-minute stretch would reset your energy levels.",
-    type: 'reminder',
-    priority: 3,
-    timestamp: new Date(Date.now() - 60000)
-  },
-  {
-    id: '3',
-    message: "Based on your sleep data, today might feel challenging. Consider rescheduling non-essential meetings.",
-    type: 'insight',
-    priority: 5,
-    timestamp: new Date(Date.now() - 120000)
-  },
-  {
-    id: '4',
-    message: "Your spending this week is trending 15% higher than your aligned budget. Review your transactions?",
-    type: 'challenge',
-    priority: 4,
-    timestamp: new Date(Date.now() - 180000)
-  },
-  {
-    id: '5',
-    message: "You've completed 80% of your habit goals today. Just one more to go!",
-    type: 'motivation',
-    priority: 3,
-    timestamp: new Date(Date.now() - 240000)
-  }
+  // ... other mock nudges
 ];
 
 // Mock flow periods
 const mockFlowPeriods: FlowPeriod[] = [
-  {
-    startTime: new Date(new Date().setHours(10, 15)),
-    endTime: new Date(new Date().setHours(11, 45)),
-    intensity: 8
-  },
-  {
-    startTime: new Date(new Date().setHours(15, 30)),
-    endTime: new Date(new Date().setHours(16, 45)),
-    intensity: 9
-  }
+  // ... mock flow periods
 ];
 
 // Mock nudge history
 const mockNudgeHistory: NudgeHistoryItem[] = [
-  {
-    nudge: {
-      id: 'h1',
-      message: "Take a 5-minute break to reset your focus",
-      type: 'reminder',
-      priority: 3,
-      timestamp: new Date(Date.now() - 60 * 60 * 1000) // 1 hour ago
-    },
-    userResponse: 'accepted',
-    responseTime: new Date(Date.now() - 60 * 59 * 1000) // 59 minutes ago
-  },
-  {
-    nudge: {
-      id: 'h2',
-      message: "Your calendar shows 3 meetings this afternoon. Consider preparing now.",
-      type: 'insight',
-      priority: 4,
-      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000) // 3 hours ago
-    },
-    userResponse: 'dismissed',
-    responseTime: new Date(Date.now() - 3 * 60 * 59 * 1000) // 2.9 hours ago
-  }
+  // ... mock nudge history
 ];
 
 // Default user preferences
 const defaultUserPreferences: UserPreferences = {
+  userId: undefined,
   nudgeFrequency: 3,
   notificationChannels: {
     inApp: true,
     push: true,
-    email: false
+    email: false,
+    googleCalendar: false,
+    googleTasks: false,
   },
   quietHours: {
     start: "22:00",
@@ -98,7 +59,8 @@ const defaultUserPreferences: UserPreferences = {
   integrations: {
     googleCalendar: false,
     googleTasks: false
-  }
+  },
+  isLoading: false,
 };
 
 // Simulated emotional states and detection
@@ -115,22 +77,35 @@ export interface NudgeContextType {
   notificationChannels: Record<NotificationChannel, NotificationChannelStatus>;
   toggleNotificationChannel: (channel: NotificationChannel) => void;
   quietHours: QuietHours;
-  setQuietHours: (hours: QuietHours) => void;
+  setQuietHours: (hours: Partial<QuietHours>) => void;
   userPreferences: UserPreferences;
   saveUserPreferences: () => Promise<void>;
   fetchUserPreferences: () => Promise<void>;
   lastNudgeEvent: NudgeEvent | null;
   logNudgeEvent: (event: NudgeEvent) => void;
-  nudgeHistory: NudgeEvent[];
+  nudgeHistory: NudgeHistoryItem[];
   flowState: FlowStateData;
   updateFlowState: (key: keyof FlowStateData, value: any) => void;
   emotionalStateHistory: EmotionalState[];
   addEmotionalState: (state: EmotionalState) => void;
   isLoadingPreferences: boolean;
+
+  activatedNudge: Nudge | null;
+  isNudgeVisible: boolean;
+  dismissNudge: () => void;
+  snoozeNudge: () => void;
+  nudgesMuted: boolean;
+  toggleNudgeMute: () => void;
+  emotionalState: string;
+  energyLevel: number;
 }
 
+// Create NudgeContext with undefined initial value
+const NudgeContext = createContext<NudgeContextType | undefined>(undefined);
+
 export const NudgeProvider = ({ children }: { children: ReactNode }) => {
-  const [nudges, setNudges] = useState<Nudge[]>([]);
+  const { user } = useAuth();
+  const [nudges, setNudges] = useState<Nudge[]>(mockNudges); // Initialize with mockNudges
   const [activatedNudge, setActivatedNudge] = useState<Nudge | null>(null);
   const [isNudgeVisible, setIsNudgeVisible] = useState(false);
   const [nudgesMuted, setNudgesMuted] = useState(false);
@@ -138,35 +113,35 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   const [energyLevel, setEnergyLevel] = useState<number>(70);
   const [flowPeriods, setFlowPeriods] = useState<FlowPeriod[]>(mockFlowPeriods);
   const [nudgeHistory, setNudgeHistory] = useState<NudgeHistoryItem[]>(mockNudgeHistory);
-  const [userPreferences, setUserPreferences] = useState<UserPreferences>(
-    // Try to load from localStorage, or use defaults
-    JSON.parse(localStorage.getItem('userPreferences') || JSON.stringify(defaultUserPreferences))
-  );
   
-  const isMobile = useIsMobile();
+  const [userPreferences, setUserPreferences] = useState<UserPreferences>(() => {
+    const localPrefs = localStorage.getItem('userPreferences');
+    return localPrefs ? JSON.parse(localPrefs) : defaultUserPreferences;
+  });
   
-  // Extract preferences for easier access
+  const isMobile = useIsMobile(); // Correctly using the imported hook
+  
   const { nudgeFrequency, notificationChannels, quietHours } = userPreferences;
   
-  // Initialize with mock data
   useEffect(() => {
-    setNudges(mockNudges);
-    
-    // Simulate emotional state changes
+    if (user && !userPreferences.userId) {
+      setUserPreferences(prev => ({ ...prev, userId: user.id }));
+      fetchUserPreferences();
+    }
+  }, [user, userPreferences.userId]);
+
+  useEffect(() => {
+    // Simulate emotional state changes interval
     const emotionalInterval = setInterval(() => {
       const randomState = emotionalStates[Math.floor(Math.random() * emotionalStates.length)];
       setEmotionalState(randomState);
       
-      // Simulate energy level fluctuations
       const newEnergy = Math.max(30, Math.min(100, energyLevel + Math.floor(Math.random() * 20) - 10));
       setEnergyLevel(newEnergy);
       
-      // Check if within quiet hours
-      const isQuietHours = checkIfQuietHours(quietHours);
+      const isQuiet = checkIfQuietHours(userPreferences.quietHours); // Use userPreferences.quietHours
       
-      // Generate personalized nudge with probability based on frequency setting
-      // But only if not in quiet hours and notifications are not muted
-      if (!nudgesMuted && !isNudgeVisible && !isQuietHours && Math.random() < (nudgeFrequency / 20)) {
+      if (!nudgesMuted && !isNudgeVisible && !isQuiet && Math.random() < (userPreferences.nudgeFrequency / 20)) {
         generatePersonalizedNudge({ 
           emotionalState, 
           energyLevel, 
@@ -175,18 +150,23 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         }).then(nudge => {
           if (nudge) {
             setNudges(prev => [...prev, nudge]);
-            if (notificationChannels.inApp) {
-              triggerNudge();
+            if (userPreferences.notificationChannels.inApp) { // Use userPreferences
+              // Trigger nudge if inApp notifications are enabled
+              const sortedNudges = [...nudges, nudge].sort((a, b) => b.priority - a.priority);
+              const selectedNudge = sortedNudges[0];
+              setActivatedNudge(selectedNudge);
+              setIsNudgeVisible(true);
+              setNudges(prev => prev.filter(n => n.id !== selectedNudge.id));
             }
           } else {
-            toast.error("Could not generate a new nudge right now.");
+            // toast.error("Could not generate a new nudge right now."); // Optionally toast
           }
         });
       }
     }, 30000);
     
     return () => clearInterval(emotionalInterval);
-  }, [nudgesMuted, isNudgeVisible, energyLevel, nudgeFrequency, quietHours, notificationChannels]);
+  }, [nudgesMuted, isNudgeVisible, emotionalState, energyLevel, flowPeriods, nudgeHistory, userPreferences]);
   
   // Save user preferences to localStorage whenever they change
   useEffect(() => {
@@ -194,8 +174,8 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   }, [userPreferences]);
   
   // Check if current time is within quiet hours
-  const checkIfQuietHours = (hours: QuietHours) => {
-    if (!hours.enabled) return false;
+  const checkIfQuietHours = (currentQuietHours: QuietHours) => {
+    if (!currentQuietHours.enabled) return false;
     
     const now = new Date();
     const currentHour = now.getHours();
@@ -203,23 +183,37 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
     const currentTimeStr = `${currentHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
     
     // Simple string comparison works for 24-hour format
-    return currentTimeStr >= hours.start || currentTimeStr <= hours.end;
+    return currentTimeStr >= currentQuietHours.start && currentTimeStr <= currentQuietHours.end;
   };
   
   // Function to trigger a nudge
-  const triggerNudge = () => {
-    if (nudges.length > 0 && !nudgesMuted) {
-      // Select a nudge based on current context
+  const triggerNudge = (customMessage?: string) => {
+    if (nudgesMuted) {
+      toast.info("Nudges are currently muted.");
+      return;
+    }
+    if (customMessage) {
+        const customNudge: Nudge = {
+            id: `custom-${Date.now()}`,
+            message: customMessage,
+            type: 'reminder', // Or make type configurable
+            priority: 5, // Highest priority for direct triggers
+            timestamp: new Date(),
+        };
+        setActivatedNudge(customNudge);
+        setIsNudgeVisible(true);
+        // Do not remove from queue if it's a custom one-off message not in nudges list
+        return;
+    }
+
+    if (nudges.length > 0) {
       const sortedNudges = [...nudges].sort((a, b) => b.priority - a.priority);
       const selectedNudge = sortedNudges[0];
       
       setActivatedNudge(selectedNudge);
       setIsNudgeVisible(true);
-      
-      // Remove the triggered nudge from the queue
-      setNudges(nudges.filter(nudge => nudge.id !== selectedNudge.id));
-    } else if (nudges.length === 0) {
-      // Generate a new nudge on demand if queue is empty
+      setNudges(prevNudges => prevNudges.filter(nudge => nudge.id !== selectedNudge.id));
+    } else {
       generatePersonalizedNudge({ 
         emotionalState, 
         energyLevel, 
@@ -245,76 +239,67 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         userResponse: 'dismissed',
         responseTime: new Date()
       };
-      setNudgeHistory([historyItem, ...nudgeHistory]);
+      setNudgeHistory(prevHistory => [historyItem, ...prevHistory].slice(0, 50)); // Keep history capped
     }
     
     setIsNudgeVisible(false);
-    setTimeout(() => setActivatedNudge(null), 300);
+    setTimeout(() => setActivatedNudge(null), 300); // Delay clearing for animation
   };
   
   // Function to snooze the current nudge
   const snoozeNudge = () => {
     if (activatedNudge) {
       // Add back to queue with reduced priority
-      const snoozedNudge = {
+      const snoozedNudge: Nudge = { // Explicitly type snoozedNudge
         ...activatedNudge,
         priority: Math.max(1, activatedNudge.priority - 1),
-        timestamp: new Date(Date.now() + 300000) // Snooze for 5 minutes
+        timestamp: new Date(Date.now() + 5 * 60 * 1000) // Snooze for 5 minutes
       };
-      setNudges([...nudges, snoozedNudge]);
+      setNudges(prevNudges => [...prevNudges, snoozedNudge]);
       
-      // Add to history
       const historyItem: NudgeHistoryItem = {
         nudge: activatedNudge,
         userResponse: 'snoozed',
         responseTime: new Date()
       };
-      setNudgeHistory([historyItem, ...nudgeHistory]);
+      setNudgeHistory(prevHistory => [historyItem, ...prevHistory].slice(0, 50));
       
-      toast.info("Nudge snoozed for 5 minutes", {
-        duration: 3000,
-      });
-      
-      dismissNudge();
+      toast.info("Nudge snoozed for 5 minutes");
+      dismissNudge(); // This will hide the current nudge
     }
   };
   
   // Toggle nudge muting
   const toggleNudgeMute = () => {
-    setNudgesMuted(!nudgesMuted);
-    if (!nudgesMuted) {
-      dismissNudge();
-      toast.info("Nudges muted", {
-        duration: 3000,
-      });
-    } else {
-      toast.info("Nudges active", {
-        duration: 3000,
-      });
-    }
+    setNudgesMuted(prevMuted => {
+      const newMutedState = !prevMuted;
+      if (newMutedState) { // If muting
+        dismissNudge(); // Dismiss any active nudge
+        toast.info("Nudges muted");
+      } else {
+        toast.info("Nudges active");
+      }
+      return newMutedState;
+    });
   };
   
   // Update nudge frequency
   const setNudgeFrequency = (frequency: number) => {
-    setUserPreferences(prev => ({
-      ...prev,
-      nudgeFrequency: frequency
-    }));
+    setUserPreferences(prev => ({ ...prev, nudgeFrequency: frequency }));
   };
   
   // Toggle notification channel
-  const toggleNotificationChannel = (channel: string) => {
+  const toggleNotificationChannel = (channel: NotificationChannel) => { // Typed channel
     setUserPreferences(prev => {
       if (channel === 'googleCalendar' || channel === 'googleTasks') {
         return {
           ...prev,
           integrations: {
             ...prev.integrations,
-            [channel]: !(prev.integrations?.[channel] || false)
+            [channel]: !prev.integrations[channel]
           }
         };
       }
-      
       return {
         ...prev,
         notificationChannels: {
@@ -326,48 +311,74 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
   };
   
   // Set quiet hours
-  const setQuietHours = ({ start, end }: { start: string; end: string }) => {
+  const setQuietHours = (newQuietHours: Partial<QuietHours>) => { // Changed parameter to Partial<QuietHours>
     setUserPreferences(prev => ({
       ...prev,
       quietHours: {
         ...prev.quietHours,
-        start,
-        end
+        ...newQuietHours // Spread partial updates
       }
     }));
   };
   
   // Save user preferences to backend (mock implementation)
-  const saveUserPreferences = async () => {
+  const saveUserPreferences = async (): Promise<void> => { // Corrected return type
+    if (!userPreferences.userId) {
+      toast.error("User ID not available. Cannot save preferences.");
+      return;
+    }
+    setUserPreferences(prev => ({ ...prev, isLoading: true }));
     try {
-      // In a real app, this would be an API call
-      console.log('Saving preferences:', userPreferences);
-      // Mock success
-      return true;
-    } catch (error) {
+      const { error } = await supabase
+        .from('user_preferences')
+        .upsert({ ...userPreferences, user_id: userPreferences.userId }) // Ensure user_id is passed for upsert
+        .eq('user_id', userPreferences.userId) // Match condition for upsert
+        .select()
+        .single();
+
+      if (error) {
+        toast.error(`Failed to save preferences: ${error.message}`);
+        console.error('Failed to save preferences:', error);
+      } else {
+        toast.success("Preferences saved successfully!");
+      }
+    } catch (error: any) {
+      toast.error(`Failed to save preferences: ${error.message}`);
       console.error('Failed to save preferences:', error);
-      return false;
+    } finally {
+      setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
   };
 
   // Fetch user preferences from supabase
   const fetchUserPreferences = useCallback(async () => {
+    if (!userPreferences.userId) {
+      // console.warn("User ID not available for fetching preferences. User might not be logged in yet.");
+      return;
+    }
+    setUserPreferences(prev => ({ ...prev, isLoading: true }));
     try {
       const { data, error } = await supabase
-        .from('user_preferences')
+        .from('user_preferences') // This table needs to exist in Supabase
         .select('*')
         .eq('user_id', userPreferences.userId)
         .single();
       
       if (data) {
-        setUserPreferences(data);
-      } else if (error) {
+        setUserPreferences(prev => ({ ...prev, ...data, isLoading: false }));
+      } else if (error && error.code !== 'PGRST116') { // PGRST116: Row not found, which is fine, defaults will be used
+        toast.error(`Failed to fetch user preferences: ${error.message}`);
         console.error('Failed to fetch user preferences:', error);
+        setUserPreferences(prev => ({ ...prev, isLoading: false }));
+      } else {
+         setUserPreferences(prev => ({ ...prev, isLoading: false })); // No data, not an error, use defaults
       }
-    } catch (error) {
+    } catch (error: any) {
+      toast.error(`Failed to fetch user preferences: ${error.message}`);
       console.error('Failed to fetch user preferences:', error);
+      setUserPreferences(prev => ({ ...prev, isLoading: false }));
     }
-  }, [userPreferences.userId]);
+  }, [userPreferences.userId, supabase]); // Added supabase to dependency array
 
   // Add a new nudge to the queue
   const addNudge = (nudge: Nudge) => {
@@ -381,21 +392,24 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
 
   // Log a nudge event
   const logNudgeEvent = (event: NudgeEvent) => {
-    // Implement event logging logic here
+    console.log("Nudge event logged:", event);
+    // Implement event logging logic here, e.g., send to backend or analytics
   };
 
   // Update flow state
   const updateFlowState = (key: keyof FlowStateData, value: any) => {
+    console.log("Updating flow state:", key, value);
     // Implement flow state update logic here
   };
 
   // Add an emotional state to the history
   const addEmotionalState = (state: EmotionalState) => {
+    console.log("Adding emotional state:", state);
     // Implement emotional state history update logic here
   };
 
   // Check if preferences are loading
-  const isLoadingPreferences = userPreferences.isLoading;
+  const isLoadingPreferences = !!userPreferences.isLoading; // Ensure boolean
 
   return (
     <NudgeContext.Provider
@@ -404,11 +418,11 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         addNudge,
         clearNudges,
         triggerNudge,
-        nudgeFrequency,
+        nudgeFrequency: userPreferences.nudgeFrequency,
         setNudgeFrequency,
-        notificationChannels,
+        notificationChannels: userPreferences.notificationChannels,
         toggleNotificationChannel,
-        quietHours,
+        quietHours: userPreferences.quietHours,
         setQuietHours,
         userPreferences,
         saveUserPreferences,
@@ -418,21 +432,28 @@ export const NudgeProvider = ({ children }: { children: ReactNode }) => {
         nudgeHistory,
         flowState: {
           intensity: 0,
-          startTime: new Date(),
-          endTime: new Date()
+          startTime: null,
+          endTime: null,
+          active: false,
         },
         updateFlowState,
         emotionalStateHistory: [],
         addEmotionalState,
-        isLoadingPreferences
+        isLoadingPreferences,
+        activatedNudge,
+        isNudgeVisible,
+        dismissNudge,
+        snoozeNudge,
+        nudgesMuted,
+        toggleNudgeMute,
+        emotionalState,
+        energyLevel,
       }}
     >
       {children}
     </NudgeContext.Provider>
   );
 };
-
-const NudgeContext = createContext<NudgeContextType | undefined>(undefined);
 
 export const useNudge = () => {
   const context = useContext(NudgeContext);

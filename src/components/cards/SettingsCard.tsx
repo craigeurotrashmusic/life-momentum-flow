@@ -1,175 +1,173 @@
-
-import { useState } from 'react';
-import { Clock, Bell, Mail, Settings, CheckCircle, ExternalLink } from 'lucide-react'; // Added icons
+import React, { useState } from 'react';
+import { useNudge } from '../nudge/NudgeContext';
+import { UserPreferences, NotificationChannel, QuietHours } from '../nudge/types'; // Import UserPreferences
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-// Select component not used in the provided snippet, if it were, ensure consistency.
 import { toast } from '@/components/ui/sonner';
-import LifeCard from './LifeCard';
-import { useNudge } from '../nudge/NudgeContext';
-import { TimeRangePicker } from '../nudge/TimeRangePicker'; // Assuming this is styled consistently
+import TimeRangePicker from '../nudge/TimeRangePicker'; // Assuming this component exists and is correctly implemented
+
+const SettingsSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+  <div className="py-4 border-b border-border/50 last:border-b-0">
+    <h3 className="text-lg font-semibold mb-3 text-foreground">{title}</h3>
+    <div className="space-y-4">{children}</div>
+  </div>
+);
+
+const channelLabels: Record<NotificationChannel, string> = {
+  inApp: "In-App Alerts",
+  push: "Push Notifications",
+  email: "Email Summaries",
+  googleCalendar: "Google Calendar Integration",
+  googleTasks: "Google Tasks Integration",
+};
+
 
 const SettingsCard = () => {
-  const { 
-    nudgeFrequency,
+  const {
+    userPreferences,
     setNudgeFrequency,
-    notificationChannels,
     toggleNotificationChannel,
-    quietHours,
     setQuietHours,
     saveUserPreferences,
-    userPreferences, // Assuming integrations are part of this
-    isLoadingPreferences, // Added for loading state
+    isLoadingPreferences,
   } = useNudge();
 
-  const [isSaving, setIsSaving] = useState(false);
+  // Local state for unsaved changes, initialized from context
+  // This helps manage edits before saving
+  const [localPreferences, setLocalPreferences] = useState<UserPreferences>(userPreferences);
 
-  const handleSaveSettings = async () => {
-    setIsSaving(true);
-    try {
-      await saveUserPreferences();
-      toast.success("Settings saved successfully", { icon: <CheckCircle className="text-green-500" /> });
-    } catch (error) {
-      toast.error("Failed to save settings. Please try again.");
-      console.error("Error saving settings:", error);
-    } finally {
-      setIsSaving(false);
-    }
+  // Update local state when context changes (e.g., after fetching)
+  React.useEffect(() => {
+    setLocalPreferences(userPreferences);
+  }, [userPreferences]);
+
+  const handleFrequencyChange = (value: number[]) => {
+    setLocalPreferences(prev => ({ ...prev, nudgeFrequency: value[0] }));
+  };
+
+  const handleChannelToggle = (channel: NotificationChannel) => {
+    setLocalPreferences(prev => {
+      const currentChannels = prev.notificationChannels || {};
+      const currentIntegrations = prev.integrations || { googleCalendar: false, googleTasks: false };
+      if (channel === 'googleCalendar' || channel === 'googleTasks') {
+        return {
+          ...prev,
+          integrations: {
+            ...currentIntegrations,
+            [channel]: !currentIntegrations[channel]
+          }
+        };
+      }
+      return {
+        ...prev,
+        notificationChannels: {
+          ...currentChannels,
+          [channel]: !currentChannels[channel]
+        }
+      };
+    });
+  };
+
+  const handleQuietHoursChange = (part: 'start' | 'end' | 'enabled', value: string | boolean) => {
+    setLocalPreferences(prev => ({
+      ...prev,
+      quietHours: {
+        ...prev.quietHours,
+        [part]: value,
+      }
+    }));
   };
   
-  // Helper for integration toggles if userPreferences.integrations is potentially undefined
-  const handleIntegrationToggle = (key: keyof NonNullable<UserPreferences['integrations']>) => {
-    // This assumes toggleNotificationChannel can handle these keys or a new function is made
-    // For this example, I'll use a placeholder logic.
-    // In a real scenario, you'd update userPreferences state and then save.
-    console.log(`Toggling integration: ${key}`);
-    // This part would need a proper state update mechanism for integrations
-    // e.g., setUserPreferences(prev => ({...prev, integrations: {...prev.integrations, [key]: !prev.integrations?.[key]}}))
-    // For now, this just calls the existing toggle function which might not be ideal for integrations.
-    // toggleNotificationChannel(key as any); // Casting as any for placeholder, needs proper handling
-     toast.info("Integration toggle needs specific backend logic not yet implemented in NudgeContext.");
+  const handleTimeRangeChange = (start: string, end: string) => {
+    setLocalPreferences(prev => ({
+      ...prev,
+      quietHours: { ...prev.quietHours, start, end }
+    }));
+  };
+
+  const handleSave = async () => {
+    // Apply local changes to context
+    setNudgeFrequency(localPreferences.nudgeFrequency);
+    (Object.keys(localPreferences.notificationChannels) as NotificationChannel[]).forEach(key => {
+        if (localPreferences.notificationChannels[key] !== userPreferences.notificationChannels[key]) {
+            toggleNotificationChannel(key);
+        }
+    });
+    (Object.keys(localPreferences.integrations) as Extract<NotificationChannel, 'googleCalendar' | 'googleTasks'>[]).forEach(key => {
+        if (localPreferences.integrations[key] !== userPreferences.integrations[key]) {
+            toggleNotificationChannel(key);
+        }
+    });
+    setQuietHours(localPreferences.quietHours);
+    
+    // Then call the save function from context which now uses the context's state
+    await saveUserPreferences();
   };
 
 
   return (
-    // Using defaultExpanded to have settings initially open
-    <LifeCard 
-      title="Notification & Nudge Settings" 
-      icon={<Settings className="text-primary"/>} // Ensure icon color is consistent
-      color="bg-gradient-to-br from-slate-800/50 to-zinc-800/50" // Slightly adjusted gradient for settings
-      expandable={true}
-      defaultExpanded={true} // Settings card often useful to see by default
-    >
-      {isLoadingPreferences ? (
-        <div className="flex justify-center items-center h-32">
-          <p className="text-muted-foreground">Loading preferences...</p>
-        </div>
-      ) : (
-        <div className="mt-2 space-y-6 p-2"> {/* Added small padding inside card content area */}
-          {/* Nudge Frequency */}
-          <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
-            <h3 className="text-md font-medium text-foreground">Nudge Frequency</h3>
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Frequency:</span>
-                <span className="text-sm font-semibold text-primary">{nudgeFrequency} per hour</span>
-              </div>
-              <Slider
-                value={[nudgeFrequency]}
-                min={1}
-                max={10}
-                step={1}
-                onValueChange={(value) => setNudgeFrequency(value[0])}
-                aria-label="Nudge frequency per hour"
-              />
-              <p className="text-xs text-muted-foreground/80">
-                Adjust how many nudges you receive per hour when active.
-              </p>
-            </div>
-          </div>
+    <div className="bg-card p-4 sm:p-6 rounded-xl shadow-lg border border-border/20">
+      <h2 className="text-xl font-bold mb-6 text-foreground">Nudge Settings</h2>
 
-          {/* Notification Channels */}
-          <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
-            <h3 className="text-md font-medium text-foreground">Notification Channels</h3>
-            <div className="space-y-4">
-              {(Object.keys(notificationChannels) as Array<keyof typeof notificationChannels>).map((channelKey) => {
-                // Assuming 'inApp', 'push', 'email' are the keys
-                if (channelKey === 'googleCalendar' || channelKey === 'googleTasks') return null; // Skip integrations here
+      <SettingsSection title="Nudge Frequency">
+        <p className="text-sm text-muted-foreground mb-2">
+          Adjust how often you receive nudges. Current: {localPreferences.nudgeFrequency} (Lower is less frequent)
+        </p>
+        <Slider
+          defaultValue={[localPreferences.nudgeFrequency]}
+          min={1}
+          max={5}
+          step={1}
+          onValueChange={handleFrequencyChange}
+          disabled={isLoadingPreferences}
+          aria-label="Nudge frequency"
+        />
+      </SettingsSection>
 
-                const channelName = {
-                  inApp: "In-app notifications",
-                  push: "Push notifications",
-                  email: "Email notifications",
-                }[channelKey] || channelKey;
-                
-                const IconComponent = channelKey === 'email' ? Mail : Bell;
-
-                return (
-                  <div key={channelKey} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <IconComponent size={18} className="text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">{channelName}</span>
-                    </div>
-                    <Switch 
-                      checked={notificationChannels[channelKey]?.enabled} // Check for enabled property
-                      onCheckedChange={() => toggleNotificationChannel(channelKey)}
-                      aria-label={`Toggle ${channelName}`}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          
-          {/* Integrations: Assuming these are boolean flags in userPreferences.integrations */}
-          {userPreferences?.integrations && (
-            <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
-              <h3 className="text-md font-medium text-foreground">Integrations</h3>
-              <div className="space-y-4">
-                {Object.entries(userPreferences.integrations).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {/* Generic icon for now, could map specific icons */}
-                      <ExternalLink size={18} className="text-muted-foreground" /> 
-                      <span className="text-sm text-muted-foreground">
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </span>
-                    </div>
-                    <Switch
-                      checked={!!value} // Ensure it's a boolean for the switch
-                      onCheckedChange={() => handleIntegrationToggle(key as keyof UserPreferences['integrations'])}
-                      aria-label={`Toggle ${key} integration`}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-
-          {/* Quiet Hours */}
-          <div className="space-y-3 p-3 bg-secondary/30 rounded-lg">
-            <div className="flex items-center gap-3 mb-2">
-                <Clock size={18} className="text-muted-foreground" />
-                <h3 className="text-md font-medium text-foreground">Quiet Hours</h3>
-            </div>
-            <TimeRangePicker 
-              startTime={quietHours.start} 
-              endTime={quietHours.end}
-              onChange={setQuietHours}
+      <SettingsSection title="Notification Channels">
+        {(Object.keys(channelLabels) as NotificationChannel[]).map((channel) => (
+          <div key={channel} className="flex items-center justify-between">
+            <Label htmlFor={String(channel)} className="text-sm text-foreground">{channelLabels[channel]}</Label> {/* Ensure ID is string */}
+            <Switch
+              id={String(channel)} // Ensure ID is string
+              checked={(channel === 'googleCalendar' || channel === 'googleTasks') ? !!localPreferences.integrations?.[channel] : !!localPreferences.notificationChannels?.[channel]}
+              onCheckedChange={() => handleChannelToggle(channel)}
+              disabled={isLoadingPreferences}
             />
-            <p className="text-xs text-muted-foreground/80">
-              Notifications will be silenced during these hours.
-            </p>
           </div>
-          
-          <Button onClick={handleSaveSettings} className="w-full mt-4 py-3 text-base" disabled={isSaving || isLoadingPreferences}>
-            {isSaving ? "Saving..." : (isLoadingPreferences ? "Loading..." : "Save All Settings")}
-          </Button>
+        ))}
+      </SettingsSection>
+
+      <SettingsSection title="Quiet Hours">
+        <div className="flex items-center justify-between mb-3">
+          <Label htmlFor="quiet-hours-enabled" className="text-sm text-foreground">Enable Quiet Hours</Label>
+          <Switch
+            id="quiet-hours-enabled"
+            checked={!!localPreferences.quietHours?.enabled}
+            onCheckedChange={(checked) => handleQuietHoursChange('enabled', checked)}
+            disabled={isLoadingPreferences}
+          />
         </div>
-      )}
-    </LifeCard>
+        {localPreferences.quietHours?.enabled && (
+           <TimeRangePicker
+            startTime={localPreferences.quietHours.start}
+            endTime={localPreferences.quietHours.end}
+            onChange={handleTimeRangeChange}
+            disabled={isLoadingPreferences}
+          />
+        )}
+      </SettingsSection>
+      
+      <Button 
+        onClick={handleSave} 
+        className="w-full mt-6"
+        disabled={isLoadingPreferences}
+      >
+        {isLoadingPreferences ? 'Saving...' : 'Save Preferences'}
+      </Button>
+    </div>
   );
 };
 

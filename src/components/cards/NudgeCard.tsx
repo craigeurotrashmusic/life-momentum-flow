@@ -2,7 +2,7 @@
 import React, { lazy, Suspense } from 'react';
 import { BrainCircuit, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
+// import { toast } from '@/components/ui/sonner'; // Not used here directly
 import LifeCard from './LifeCard';
 import { NudgeProvider, useNudge } from '../nudge/NudgeContext';
 import EmotionalHeatmap from '../nudge/EmotionalHeatmap';
@@ -19,6 +19,10 @@ const NudgeCardContent = () => {
   const { triggerNudge } = useNudge();
   const [showSettings, setShowSettings] = React.useState(false);
 
+  const handleGenerateTestNudge = () => { // Wrapper function
+    triggerNudge("This is a test nudge!"); // Call with a test message
+  };
+
   return (
     <div className="mt-2 space-y-5">
       <EmotionalHeatmap />
@@ -30,7 +34,7 @@ const NudgeCardContent = () => {
         <Button 
           className="flex-1 py-3 rounded-xl flex items-center justify-center gap-2"
           variant="default"
-          onClick={triggerNudge}
+          onClick={handleGenerateTestNudge} // Use wrapper
         >
           <Bell size={16} />
           <span>Generate Test Nudge</span>
@@ -57,23 +61,21 @@ const NudgeCardContent = () => {
 const NudgeCard = () => {
   return (
     <NudgeProvider>
-      {/* Main Nudge Card */}
       <LifeCard 
         title="Psychological Connection" 
         icon={<BrainCircuit />}
         color="bg-gradient-to-br from-purple-900/30 to-pink-900/30"
         expandable={true}
+        defaultExpanded={true} // Keep expanded by default
       >
         <NudgeCardContent />
       </LifeCard>
       
-      {/* Floating Nudge Pill */}
       <FloatingNudge />
-      
-      {/* Floating Action Button */}
       <FloatingActionButton />
     </NudgeProvider>
   );
 };
 
 export default NudgeCard;
+

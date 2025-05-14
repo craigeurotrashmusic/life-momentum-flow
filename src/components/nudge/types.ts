@@ -1,121 +1,75 @@
 
+export type NudgeType = 'insight' | 'reminder' | 'challenge' | 'motivation';
+export type NotificationChannel = 'inApp' | 'push' | 'email' | 'googleCalendar' | 'googleTasks';
+export type NotificationChannelStatus = boolean;
+
 export interface Nudge {
   id: string;
   message: string;
-  type: 'motivation' | 'reminder' | 'insight' | 'challenge';
-  priority: number; // 1-5, with 5 being highest
+  type: NudgeType;
+  priority: number;
   timestamp: Date;
-  responded?: boolean;
-  category?: string;
-  source?: 'system' | 'calendar' | 'task' | 'custom';
-  expiresAt?: Date;
-  actionable?: boolean;
-  actionUrl?: string;
-}
-
-export interface EmotionalState {
-  state: string;
-  level: number;
-  timestamp: Date;
-  context?: string;
-  source?: 'manual' | 'detected' | 'predicted';
-  duration?: number;
 }
 
 export interface FlowPeriod {
   startTime: Date;
   endTime: Date;
-  intensity: number; // 1-10
-  factors?: {
-    focusScore?: number;
-    productivityScore?: number;
-    interruptionCount?: number;
-    taskCompletionRate?: number;
-    screenTimeQuality?: number;
-    biometrics?: {
-      heartRateVariability?: number;
-      respirationRate?: number;
-    };
-  };
-  source?: 'manual' | 'detected' | 'predicted';
-  tags?: string[];
+  intensity: number;
 }
 
 export interface NudgeHistoryItem {
   nudge: Nudge;
   userResponse: 'accepted' | 'dismissed' | 'snoozed';
   responseTime: Date;
-  timeToRespond?: number; // Time in milliseconds between nudge display and response
-  context?: {
-    emotionalState?: string;
-    energyLevel?: number;
-    currentActivity?: string;
-  };
-}
-
-export interface NotificationChannels {
-  inApp: boolean;
-  push: boolean;
-  email: boolean;
-  [key: string]: boolean;
 }
 
 export interface QuietHours {
   start: string;
   end: string;
   enabled: boolean;
-  daysOfWeek?: number[]; // 0-6, Sunday-Saturday
 }
 
 export interface UserPreferences {
-  nudgeFrequency: number;
-  notificationChannels: NotificationChannels;
+  userId?: string; // Optional for initial state before user is loaded
+  nudgeFrequency: number; // Example: 1-5 scale
+  notificationChannels: Record<NotificationChannel, NotificationChannelStatus>;
   quietHours: QuietHours;
-  integrations?: {
-    googleCalendar?: boolean;
-    googleTasks?: boolean;
-    slack?: boolean;
-    [key: string]: boolean | undefined;
+  integrations: {
+    googleCalendar: boolean;
+    googleTasks: boolean;
   };
-  nudgePreferences?: {
-    allowMotivational: boolean;
-    allowReminders: boolean;
-    allowInsights: boolean;
-    allowChallenges: boolean;
-    maxPriorityThreshold?: number;
-  };
-  feedbackPreferences?: {
-    collectFeedback: boolean;
-    collectEmotionalData: boolean;
-    shareAnonymizedData: boolean;
-  };
+  isLoading?: boolean; // To track loading state
 }
 
-export interface NudgeFeedback {
+export interface NudgeEvent {
+  // Define structure for nudge events, e.g., for logging
+  type: string; // 'shown', 'clicked', 'dismissed'
   nudgeId: string;
-  rating: number; // 1-5
-  helpful: boolean;
-  comments?: string;
   timestamp: Date;
+  details?: Record<string, any>;
+}
+
+export interface FlowStateData {
+  intensity: number; // 0-100
+  startTime: Date | null;
+  endTime: Date | null;
+  active?: boolean;
+}
+
+export interface EmotionalState {
+  // Define structure for emotional state entries, e.g., for history
+  state: string; // 'energized', 'focused', 'neutral', 'distracted', 'tired'
+  timestamp: Date;
+  intensity?: number; // Optional intensity
 }
 
 export interface EmotionalInsight {
   date: Date;
   summary: string;
   primaryEmotion: string;
-  emotionalVariability: number;
+  emotionalVariability: number; // Percentage
   energyTrend: 'increasing' | 'decreasing' | 'stable';
-  peakPerformanceTimes: string[];
+  peakPerformanceTimes: string[]; // e.g., "10:00 AM - 12:00 PM"
   recommendations: string[];
 }
 
-export interface NudgeStatistics {
-  totalNudges: number;
-  acceptanceRate: number;
-  dismissRate: number;
-  snoozeRate: number;
-  averageResponseTime: number;
-  nudgesByType: Record<string, number>;
-  responsesByType: Record<string, Record<string, number>>;
-  feedbackRating: number;
-}
