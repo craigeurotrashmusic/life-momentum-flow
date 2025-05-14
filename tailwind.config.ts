@@ -2,12 +2,9 @@
 import type { Config } from "tailwindcss";
 
 export default {
-  darkMode: ["class"],
+  darkMode: ['attr', 'data-theme'], // Changed to attribute strategy
   content: [
-    "./pages/**/*.{ts,tsx}",
-    "./components/**/*.{ts,tsx}",
-    "./app/**/*.{ts,tsx}",
-    "./src/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}", // Simplified content path
   ],
   prefix: "",
   theme: {
@@ -24,9 +21,43 @@ export default {
     },
     extend: {
       colors: {
+        // Momentum OS Palette
+        brand: {
+          sky: 'hsl(var(--brand-sky))', // Using HSL for Tailwind's opacity modifiers
+          mint: 'hsl(var(--brand-mint))',
+          ivory: 'hsl(var(--brand-ivory))',
+          'teal-900': 'hsl(var(--brand-teal-900))',
+          'teal-700': 'hsl(var(--brand-teal-700))',
+        },
+        accentColor: { // Renamed to avoid conflict with Tailwind's accent
+          peach: 'hsl(var(--accent-peach))',
+          gold: 'hsl(var(--accent-gold))',
+        },
+        grey: {
+          100: 'hsl(var(--grey-100))',
+          600: 'hsl(var(--grey-600))',
+        },
+        status: {
+          success: 'hsl(var(--success))',
+          warning: 'hsl(var(--warning))',
+          error: 'hsl(var(--error))',
+          info: 'hsl(var(--info))',
+        },
+        chart: {
+          'palette-1': 'hsl(var(--brand-mint))',
+          'palette-2': 'hsl(var(--brand-sky))',
+          'palette-3': 'hsl(var(--accent-peach))',
+          'palette-4': 'hsl(var(--accent-gold))',
+        },
+        progressRing: {
+          complete: 'hsl(var(--accent-peach))',
+          remaining: 'hsl(var(--grey-100))',
+        },
+        
+        // Shadcn UI variables (mapping to new Momentum vars)
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        ring: 'hsl(var(--ring))', // For focus rings
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
         primary: {
@@ -45,7 +76,7 @@ export default {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))'
         },
-        accent: {
+        accent: { // Shadcn accent, maps to accentColor.gold
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))'
         },
@@ -58,11 +89,24 @@ export default {
           foreground: 'hsl(var(--card-foreground))'
         },
       },
-      borderRadius: {
-        lg: 'var(--radius)',
+      fontFamily: {
+        sans: ['Inter', 'var(--font-family-base)', 'sans-serif'],
+      },
+      fontSize: {
+        h1: ['var(--font-size-h1)', { lineHeight: '2.5rem' }],
+        h2: ['var(--font-size-h2)', { lineHeight: '2.25rem' }],
+        h3: ['var(--font-size-h3)', { lineHeight: '2rem' }],
+        body: ['var(--font-size-body)', { lineHeight: '1.625rem' }],
+        caption: ['var(--font-size-caption)', { lineHeight: '1.25rem' }],
+      },
+      borderRadius: { // Keep existing, ensure `2xl` is 1rem if that's the target
+        lg: 'var(--radius)', // current var(--radius) is 1rem
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
-        '2xl': '1rem'
+        '2xl': '1rem', // Explicitly 1rem as per new styles for cards
+      },
+      boxShadow: {
+        card: '0 4px 12px rgba(0,0,0,0.15)', // New card shadow
       },
       keyframes: {
         'accordion-down': {
@@ -77,7 +121,7 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(10px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' }
         },
-        'slide-in': {
+        'slide-in': { // Assuming this is the existing slide-in, might need review
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' }
         },
@@ -102,3 +146,4 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+

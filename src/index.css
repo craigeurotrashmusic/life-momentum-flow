@@ -1,97 +1,233 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  /* Momentum OS – Style Sheet (v1.1) */
+  /* 1 · Core Palette – Light Mode (Defaults) */
   :root {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --brand-sky:      #A5C8E4;
+    --brand-mint:     #C0ECCC;
+    --brand-ivory:    #FFF8E7;
+    --brand-teal-900: #264653;
+    --brand-teal-700: #365757;
+    --accent-peach:   #F4A261;
+    --accent-gold:    #DCBF73;
+    --grey-100:       #F7F7F7;
+    --grey-600:       #6E7B7B;
+    --success:        #98D7AF;
+    --warning:        #F4C97A;
+    --error:          #FF6B6B;
+    --info:           #6DB3E8;
+    --font-family-base:   'Inter', sans-serif; /* Applied via Tailwind config */
+    --font-size-h1:       2rem;
+    --font-size-h2:       1.75rem;
+    --font-size-h3:       1.5rem;
+    --font-size-body:     1rem;
+    --font-size-caption:  0.875rem;
+
+    /* Shadcn UI variables - mapped to Momentum OS palette */
+    --background: var(--brand-sky); /* bg-background will be brand-sky */
+    --foreground: var(--brand-teal-900); /* text-foreground will be brand-teal-900 */
     
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: var(--brand-mint); /* bg-card will be brand-mint */
+    --card-foreground: var(--brand-teal-900);
     
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: var(--brand-mint);
+    --popover-foreground: var(--brand-teal-900);
     
-    --primary: 252 87% 67%;
-    --primary-foreground: 0 0% 98%;
+    --primary: var(--accent-peach); /* primary color is accent-peach */
+    --primary-foreground: #FFFFFF; /* Text on primary buttons */
     
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: var(--brand-ivory); /* secondary bg, e.g. for secondary button hover */
+    --secondary-foreground: var(--brand-teal-700);
     
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: var(--grey-100);
+    --muted-foreground: var(--grey-600);
     
-    --accent: 244 76% 60%;
-    --accent-foreground: 0 0% 98%;
+    --accent: var(--accent-gold); /* accent color is accent-gold */
+    --accent-foreground: var(--brand-teal-900);
     
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: var(--error);
+    --destructive-foreground: #FFFFFF;
     
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --border: var(--grey-100); /* default border color */
+    --input: var(--brand-ivory); /* input background */
+    --input-foreground: var(--brand-teal-900); /* input text color */
+    --ring: var(--accent-peach); /* focus ring */
     
-    --radius: 1rem;
+    --radius: 1rem; /* Corresponds to rounded-2xl */
+
+    /* Keep existing layout variables if not covered by Momentum OS styles */
+    --collapsed-height: 180px; /* Or evaluate if still needed */
+    --expanded-height: 500px;  /* Or evaluate if still needed */
+  }
+
+  /* 2 · Dark Mode Derivatives */
+  html[data-theme="dark"] {
+    --brand-sky:      #305A77;
+    --brand-mint:     #2B5E45;
+    --brand-ivory:    #493F30;
+    --brand-teal-900: #E8F1F4; /* Text color on dark bg */
+    --brand-teal-700: #B0BEC5; /* Secondary text on dark bg */
+    --accent-peach:   #D68950;
+    --accent-gold:    #A68E4A;
+    --grey-100:       #1F2626; /* Darker grey for borders/muted bg */
+    --grey-600:       #9EAEAE; /* Lighter grey for captions on dark bg */
+    --success:        #6CA887;
+    --warning:        #A88651;
+    --error:          #CC4F4F;
+    --info:           #4A8EC6;
+
+    /* Shadcn UI dark variables mapped to Momentum OS dark palette */
+    --background: var(--brand-sky);
+    --foreground: var(--brand-teal-900);
     
-    --collapsed-height: 180px;
-    --expanded-height: 500px;
+    --card: var(--brand-mint);
+    --card-foreground: var(--brand-teal-900);
+    
+    --popover: var(--brand-mint);
+    --popover-foreground: var(--brand-teal-900);
+    
+    --primary: var(--accent-peach);
+    --primary-foreground: #FFFFFF; 
+    
+    --secondary: var(--brand-ivory);
+    --secondary-foreground: var(--brand-teal-700);
+    
+    --muted: var(--grey-100);
+    --muted-foreground: var(--grey-600);
+    
+    --accent: var(--accent-gold);
+    --accent-foreground: var(--brand-teal-900);
+    
+    --destructive: var(--error);
+    --destructive-foreground: #FFFFFF;
+    
+    --border: var(--grey-600); /* Darker border */
+    --input: var(--brand-ivory); 
+    --input-foreground: var(--brand-teal-900);
+    --ring: var(--accent-peach);
+  }
+
+  /* 3 · Application Tokens & Usage - Base Styles */
+  body {
+    @apply bg-background text-foreground; /* Uses --background and --foreground vars */
+    font-family: var(--font-family-base);
+    @apply antialiased;
+    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03"; /* from existing */
+    overscroll-behavior-y: none; /* from existing */
+  }
+
+  h1, h2, h3 { 
+    color: var(--brand-teal-900); /* Directly using var, or Tailwind text-brand-teal-900 after config */
+    font-family: var(--font-family-base);
+  }
+  h1 { font-size: var(--font-size-h1); }
+  h2 { font-size: var(--font-size-h2); }
+  h3 { font-size: var(--font-size-h3); }
+
+  p, span, label { /* Base styles, can be overridden by utilities */
+    color: var(--brand-teal-700);
+    font-size: var(--font-size-body);
+  }
+
+  a, .link-text { /* .link-text for non-<a> elements styled as links */
+    color: var(--brand-teal-900);
+    text-decoration: underline;
   }
   
-  .light {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    
-    --primary: 252 87% 67%;
-    --primary-foreground: 240 5.9% 10%;
-    
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    
-    --accent: 244 76% 60%;
-    --accent-foreground: 240 5.9% 10%;
-    
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+  :focus { /* Global focus style */
+    outline: 3px solid var(--accent-peach);
+    outline-offset: 2px; /* Optional: adds some space */
   }
-}
 
-@layer base {
+  /* Keep existing base layer utilities if necessary */
   * {
-    @apply border-border;
+    @apply border-border; /* Uses --border var */
   }
   
   html {
     @apply scroll-smooth overflow-y-auto overscroll-y-none;
-    -webkit-overflow-scrolling: touch; /* This applies to the root scroller */
-    scroll-behavior: smooth; /* Global smooth scroll for anchor links etc. */
-  }
-  
-  body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings: "ss01", "ss02", "cv01", "cv02", "cv03";
-    overscroll-behavior-y: none;
-  }
-  
-  .glass-card {
-    @apply bg-secondary/50 backdrop-blur-lg border border-white/10 shadow-lg;
+    -webkit-overflow-scrolling: touch; 
+    scroll-behavior: smooth; 
   }
 }
 
+@layer components {
+  /* 3 · Application Tokens & Usage - Component Styles */
+  .card, .modal { /* These can be applied as classes or inspire Tailwind component styles */
+    background-color: var(--brand-mint);
+    border-radius: 1rem; /* Equivalent to rounded-2xl from current config */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    color: var(--brand-teal-900); /* Default text color for cards/modals */
+  }
+  .uplift-surface { 
+    background-color: var(--brand-ivory); 
+  }
+
+  .top-bar { /* Example, if used */
+    background-color: var(--brand-sky); 
+    border-bottom: 1px solid var(--grey-100); 
+  }
+  .bottom-nav { /* Example, if used */
+    background-color: var(--brand-teal-900);
+    backdrop-filter: blur(10px);
+    opacity: 0.9;
+  }
+
+  .caption, .small-text { 
+    color: var(--grey-600); 
+    font-size: var(--font-size-caption); 
+  }
+  .icon-outline { stroke: var(--brand-teal-700); }
+  .icon-filled  { fill:   var(--accent-peach); }
+
+  .btn-primary {
+    background-color: var(--accent-peach);
+    color: #fff;
+    border-radius: 1rem; /* rounded-2xl */
+    padding: 0.75rem 1.5rem;
+    font-weight: 500; /* Added for better appearance */
+    transition: background-color 0.2s;
+  }
+  .btn-primary:hover {
+    background-color: color-mix(in srgb, var(--accent-peach) 90%, black);
+  }
+
+  .btn-secondary {
+    background-color: transparent;
+    border: 2px solid var(--brand-teal-700);
+    color: var(--brand-teal-700);
+    border-radius: 1rem; /* rounded-2xl */
+    padding: calc(0.75rem - 2px) calc(1.5rem - 2px); /* Adjust padding for border */
+    font-weight: 500; /* Added for better appearance */
+    transition: background-color 0.2s, color 0.2s;
+  }
+  .btn-secondary:hover { 
+    background-color: var(--brand-ivory); 
+    /* color: var(--brand-teal-900); /* Optional: darken text on hover */
+  }
+
+  .toggle-track-active, .slider-track-active { background-color: var(--brand-mint); }
+  .toggle-thumb, .slider-thumb { background-color: var(--accent-peach); }
+
+  .alert-success { background-color: rgba(152,215,175,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--success); }
+  .alert-warning { background-color: rgba(244,201,122,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--warning); }
+  .alert-error   { background-color: rgba(255,107,107,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--error); }
+  .alert-info    { background-color: rgba(109,179,232,0.2); color: var(--brand-teal-900); padding: 0.75rem 1rem; border-radius: 0.5rem; border-left: 4px solid var(--info); }
+
+  .chart-palette-1 { fill: var(--brand-mint); }
+  .chart-palette-2 { fill: var(--brand-sky); }
+  .chart-palette-3 { fill: var(--accent-peach); }
+  .chart-palette-4 { fill: var(--accent-gold); }
+  .progress-ring-complete   { stroke: var(--accent-peach); }
+  .progress-ring-remaining  { stroke: var(--grey-100); }
+}
+
 @layer utilities {
+  /* Keep existing utilities and add new ones if needed */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -101,53 +237,42 @@
     scrollbar-width: none;
   }
   
-  .text-gradient {
+  .text-gradient { /* Existing, check if still needed or adapt */
     @apply bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent;
   }
   
-  /* These general snap utilities can remain for other uses, but .card-stack will not use them. */
-  .snap-container {
+  .snap-container { /* Existing */
     @apply snap-y snap-mandatory;
     scroll-snap-type: y mandatory;
   }
   
-  .snap-item {
+  .snap-item { /* Existing */
     @apply snap-start snap-always;
     scroll-snap-align: start;
     scroll-snap-stop: always;
   }
+
+  /* Glass card from existing, might need re-evaluation with new theme */
+  .glass-card {
+    /* background-color: var(--brand-mint) !important; /* Example override */
+    /* opacity: 0.85; */
+    @apply bg-secondary/50 backdrop-blur-lg border border-white/10 shadow-lg;
+  }
 }
 
-/*
-  .card-stack is no longer a scroll container itself.
-  Removed:
-  - scroll-snap-type: y mandatory;
-  - overflow-y: scroll;
-  - height: 100vh;
-  - -webkit-overflow-scrolling: touch; (less relevant now)
-  - overscroll-behavior-y: contain; (less relevant now)
-  It's now just a flex container for the cards within the main scrollable area.
-*/
+/* Keep other existing styles like .card-stack etc., evaluate their compatibility later */
+/* ... existing .card-stack, .carousel, .animate-float, etc. ... */
 .card-stack {
   width: 100%;
   max-width: 100%;
   padding: 1rem 0; 
-  /* display: flex; /* Consider adding flex properties if needed for card layout */
-  /* flex-direction: column; /* If using flex */
-  /* gap: 1rem; /* If using flex, replaces margin-bottom on items */
 }
 
-/*
-  .card-stack-item no longer needs scroll-snap properties.
-  Removed:
-  - scroll-snap-align: start;
-  - scroll-snap-stop: always;
-*/
 .card-stack-item {
-  min-height: 85vh; /* Keeps cards tall to ensure scrolling content */
+  min-height: 85vh; 
   width: 100%;
-  padding: 1rem; /* This might be duplicative if cards have their own internal padding. Review card components. */
-  margin-bottom: 1rem; /* Provides spacing between cards */
+  padding: 1rem; 
+  margin-bottom: 1rem; 
 }
 
 .carousel {
@@ -165,7 +290,6 @@
   margin-right: 1rem;
 }
 
-/* Animation keyframes */
 @keyframes float {
   0%, 100% {
     transform: translateY(0);
@@ -191,3 +315,4 @@
 .animate-pulse-subtle {
   animation: pulse-subtle 3s ease-in-out infinite;
 }
+
