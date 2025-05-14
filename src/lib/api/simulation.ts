@@ -1,6 +1,7 @@
+
 import { supabase } from '../supabaseClient';
 import { toast } from '@/hooks/use-toast';
-import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import type { RealtimeChannel, RealtimePostgresChangesPayload, REALTIME_SUBSCRIBE_STATES } from '@supabase/supabase-js'; // Added REALTIME_SUBSCRIBE_STATES
 
 export type ScenarioType = "sleep" | "finance" | "workout" | "diet" | "custom";
 
@@ -53,12 +54,12 @@ export const createSimulation = async (userId: string, params: CreateSimulationP
   };
 
   const { data, error } = await supabase
-    .from('simulations')
+    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings (read-only files)
     .insert([{ 
-      user_id: userId, // Make sure userId is available and correct
+      user_id: userId, 
       scenario_type: params.scenario_type,
       parameters: params.parameters,
-      ...mockDeltas // Add mock deltas for now
+      ...mockDeltas 
     }])
     .select()
     .single();
@@ -77,14 +78,13 @@ export const createSimulation = async (userId: string, params: CreateSimulationP
 export const getSimulation = async (id: string): Promise<Simulation | null> => {
   console.log("Fetching simulation with ID:", id);
   const { data, error } = await supabase
-    .from('simulations')
+    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings
     .select('*')
     .eq('id', id)
     .single();
 
   if (error) {
     console.error('Error fetching simulation:', error);
-    // Don't toast for every fetch error unless it's critical for UI
     return null;
   }
   return data as Simulation;
@@ -94,7 +94,7 @@ export const getSimulation = async (id: string): Promise<Simulation | null> => {
 export const listRecentSimulations = async (userId: string, limit: number = 10): Promise<Simulation[]> => {
   console.log("Fetching recent simulations for user:", userId);
   const { data, error } = await supabase
-    .from('simulations')
+    .from('simulations') // If errors persist here, it's likely due to Supabase schema typings
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
@@ -108,7 +108,6 @@ export const listRecentSimulations = async (userId: string, limit: number = 10):
 };
 
 // Function to subscribe to new simulations for a user
-// The callback will receive the new simulation record
 let simulationChannel: RealtimeChannel | null = null;
 
 export const subscribeSimulations = (
@@ -118,31 +117,31 @@ export const subscribeSimulations = (
   if (simulationChannel) {
     console.log("Already subscribed to simulations. Removing previous channel to avoid duplicates.");
     supabase.removeChannel(simulationChannel).catch(e => console.warn("Error removing previous sim channel", e));
-    simulationChannel = null; // Ensure it's nullified before creating a new one
+    simulationChannel = null;
   }
   
-  const channelName = `simulations_user_${userId}_${Date.now()}`; // Add timestamp for more uniqueness if needed rapidly
+  const channelName = `simulations_user_${userId}_${Date.now()}`;
   simulationChannel = supabase
     .channel(channelName)
-    .on<Simulation>(
-      'postgres_changes',
+    .on( // Note: Type assertion for payload in callback might be needed if generic T is not inferred correctly
+      'postgres_changes', // Corrected: Use string literal
       { 
         event: 'INSERT', 
         schema: 'public', 
         table: 'simulations',
         filter: `user_id=eq.${userId}` 
       },
-      (payload) => {
+      (payload) => { // payload is RealtimePostgresChangesPayload<{[key: string]: any;}> by default
         console.log('New simulation received via subscription:', payload);
+        // Explicitly cast payload to the expected type if necessary, though Supabase tries to infer
         callback(payload as RealtimePostgresChangesPayload<Simulation>);
       }
     )
     .subscribe((status, err) => {
-      if (status === 'SUBSCRIBED') {
+      if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) {
         console.log(`Successfully subscribed to new simulations for user ${userId} on channel ${channelName}`);
-      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      } else if (status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR || status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CLOSED) {
         console.error(`Error subscribing to simulations channel for user ${userId} on ${channelName}: ${err?.message || status}`);
-        // Optionally try to resubscribe or notify user
       }
     });
 
@@ -158,35 +157,9 @@ export const unsubscribeSimulations = () => {
       })
       .catch(error => {
         console.error("Error unsubscribing from simulations channel:", error);
-        // simulationChannel might still be considered active by Supabase client internally
-        // Setting to null regardless to allow resubscription attempt by our logic
         simulationChannel = null; 
       });
   } else {
     console.log("No active simulation channel to unsubscribe from.");
   }
 };
-
-// For SimulationCard, the old SimulationResult might need to map to this new Simulation type
-// If SimulationResult from the old context is still used, ensure it's compatible or update it.
-// For now, I'll assume SimulationCard will use the new `Simulation` type.
-// The existing SimulationCard used SimulationResult from '@lib/api' which doesn't exist anymore.
-// The old SimulationResult type definition in `src/lib/api/simulation.ts` (allowed files) was:
-/*
-export interface SimulationResult {
-  id: string;
-  user_id?: string; 
-  simulation_params_id?: string; 
-  healthDelta: number;
-  wealthDelta: number;
-  psychologyDelta: number;
-  cascadeEffects?: {
-    health: string[];
-    wealth: string[];
-    psychology: string[];
-  };
-  created_at?: string;
-}
-*/
-// The new `Simulation` type has `health_delta`, `wealth_delta`, `psychology_delta` and no `cascadeEffects`.
-// I'll need to update SimulationCard to use `Simulation` and adjust its display if it relied on `cascadeEffects`.

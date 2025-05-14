@@ -1,12 +1,10 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { 
   RealtimeChannel, 
   RealtimePostgresChangesPayload,
   REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
-  REALTIME_LISTEN_TYPES, // Added import
-  REALTIME_SUBSCRIBE_STATES // Added import
+  REALTIME_SUBSCRIBE_STATES
 } from '@supabase/supabase-js';
 
 // Updated RealtimeData interface to correctly match Supabase payload structure
@@ -20,17 +18,17 @@ interface RealtimeData<T extends Record<string, any>> {
 export function useRealtime<T extends Record<string, any>>(
   tableName: string,
   schema: string = 'public',
-  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = 'UPDATE', 
+  event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT = REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.UPDATE, 
   callback: (payload: RealtimeData<T>) => void
 ) {
   const [data, setData] = useState<RealtimeData<T>>({ new: null, old: null, errors: null });
   const [channel, setChannel] = useState<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    const subscribeToChannel = async () => { // Renamed for clarity from 'subscribe'
+    const subscribeToChannel = async () => { 
       const newChannel = supabase.channel(`realtime_${tableName}_${event}`)
         .on(
-          REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use imported enum member
+          'postgres_changes', 
           { event: event, schema: schema, table: tableName },
           (payload: RealtimePostgresChangesPayload<T>) => {
             const a_new = payload.new as T | null;
@@ -48,14 +46,13 @@ export function useRealtime<T extends Record<string, any>>(
 
     subscribeToChannel();
 
-    // Capture channel for cleanup: Renamed currentChannel to newChannelInstance for clarity
     const newChannelInstance = channel; 
     return () => {
       if (newChannelInstance) {
         supabase.removeChannel(newChannelInstance);
       }
     };
-  }, [tableName, schema, event, callback, channel]); // Added channel to dependencies to re-subscribe if it changes externally, though typically managed internally.
+  }, [tableName, schema, event, callback, channel]); 
 
   return data;
 }
@@ -75,10 +72,10 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
       return;
     }
 
-    const subscribeToChannel = async () => { // Renamed for clarity
+    const subscribeToChannel = async () => { 
       const newChannel = supabase.channel(`table-db-changes_${tableName}_${eventType}`) 
         .on(
-          REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use imported enum member
+          'postgres_changes', 
           { 
             event: eventType, 
             schema: schema,
@@ -101,8 +98,7 @@ export function useRealtimePostgresChanges<T extends Record<string, any> = any>(
         supabase.removeChannel(newChannelInstance);
       }
     };
-  }, [tableName, schema, eventType, callback, channel]); // Added channel to dependencies
-
+  }, [tableName, schema, eventType, callback, channel]); 
 }
 
 // Added constraint T extends Record<string, any>
@@ -113,9 +109,9 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
   eventType: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT | '*' = '*'
 ) {
   const channelName = `table-changes_${table}_${eventType}_${Date.now()}`;
-  const channelInstance = supabase.channel(channelName) // Renamed channel to channelInstance
+  const channelInstance = supabase.channel(channelName) 
     .on(
-      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES, // Use imported enum member
+      'postgres_changes', 
       {
         event: eventType,
         schema: schema,
@@ -124,9 +120,9 @@ export function subscribeToPostgresChanges<T extends Record<string, any> = any>(
       callback
     )
     .subscribe((status, err) => { 
-      if (status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) { // Corrected status check
+      if (status === REALTIME_SUBSCRIBE_STATES.TIMED_OUT || status === REALTIME_SUBSCRIBE_STATES.CHANNEL_ERROR) { 
         console.error(`Subscription error on ${channelName} (${status}):`, err);
-      } else if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) { // Corrected status check
+      } else if (status === REALTIME_SUBSCRIBE_STATES.SUBSCRIBED) { 
         console.log(`Successfully subscribed to ${channelName}`);
       }
     });

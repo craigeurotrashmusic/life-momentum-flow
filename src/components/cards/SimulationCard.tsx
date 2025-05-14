@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { EmblaOptionsType } from 'embla-carousel-react'; // Corrected import
+import type EmblaOptionsType from 'embla-carousel-react'; // Corrected import
 import {
   Card,
   CardContent,
@@ -92,6 +92,7 @@ function adaptParamsToCreateParams(params: SimulationParams): CreateSimulationPa
   };
 }
 
+
 const SimulationCard = () => {
   const { user } = useAuth();
   const [simulationParams, setSimulationParams] = useState<SimulationParams>({
@@ -162,12 +163,13 @@ const SimulationCard = () => {
   useEffect(() => {
     if (!activeSimulationId || !user) return;
 
-    const onUpdate = (update: any) => {
-      console.log('Live simulation update received:', update);
-      // Ensure the update structure matches Simulation or RealtimePostgresChangesPayload<Simulation>
-      const simulationData = update.new ? update.new : update; // Handle direct object or payload
-      if (simulationData && simulationData.id === activeSimulationId) { // Check if update is for active sim
-        const adaptedUpdate = adaptSimulationToResult(simulationData);
+    // The callback for subscribeSimulations expects RealtimePostgresChangesPayload<Simulation>
+    const onUpdate = (payload: RealtimePostgresChangesPayload<Simulation>) => {
+      console.log('Live simulation update received via subscription:', payload);
+      
+      // Check if the update is for the active simulation and is an INSERT or UPDATE event
+      if (payload.new && payload.new.id === activeSimulationId) {
+        const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
         
         setSimulationResult(prev => {
           // If prev exists and has an id, keep it, otherwise use activeSimulationId
@@ -178,13 +180,22 @@ const SimulationCard = () => {
             id: currentId // Ensure ID is preserved correctly
           };
         });
+      } else if (payload.eventType === 'UPDATE' && payload.new && payload.new.id === activeSimulationId) {
+        // Also handle if payload.new is directly the Simulation object in some cases
+         const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
+         setSimulationResult(prev => ({ ...prev, ...adaptedUpdate, id: prev?.id || activeSimulationId }));
       }
     };
     
-    const { unsubscribe } = subscribeSimulations(user.id, onUpdate); // Assuming subscribeSimulations returns an unsubscribe function
+    // subscribeSimulations now returns a RealtimeChannel instance. We need to call its unsubscribe method.
+    const channel = subscribeSimulations(user.id, onUpdate); 
     
     return () => {
-      unsubscribe(); // Call the unsubscribe function
+      // To unsubscribe, call channel.unsubscribe() or supabase.removeChannel(channel)
+      // supabase.removeChannel(channel) is generally safer.
+      if (channel) {
+        unsubscribeSimulations(); // This function handles removing the specific channel
+      }
     };
   }, [activeSimulationId, user]);
   
