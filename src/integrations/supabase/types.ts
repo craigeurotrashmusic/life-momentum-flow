@@ -9,7 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      simulations: {
+        Row: {
+          created_at: string
+          health_delta: number | null
+          id: string
+          parameters: Json | null
+          psychology_delta: number | null
+          scenario_type: Database["public"]["Enums"]["scenario_type_enum"]
+          user_id: string
+          wealth_delta: number | null
+        }
+        Insert: {
+          created_at?: string
+          health_delta?: number | null
+          id?: string
+          parameters?: Json | null
+          psychology_delta?: number | null
+          scenario_type: Database["public"]["Enums"]["scenario_type_enum"]
+          user_id: string
+          wealth_delta?: number | null
+        }
+        Update: {
+          created_at?: string
+          health_delta?: number | null
+          id?: string
+          parameters?: Json | null
+          psychology_delta?: number | null
+          scenario_type?: Database["public"]["Enums"]["scenario_type_enum"]
+          user_id?: string
+          wealth_delta?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +50,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      scenario_type_enum: "sleep" | "finance" | "workout" | "diet" | "custom"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +165,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      scenario_type_enum: ["sleep", "finance", "workout", "diet", "custom"],
+    },
   },
 } as const

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import type { EmblaOptionsType } from 'embla-carousel-react'; // Corrected import
-import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'; // Added import
+import type EmblaOptionsType from 'embla-carousel-react'; // Corrected import: default import
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import {
   Card,
   CardContent,
@@ -116,6 +116,18 @@ const SimulationCard = () => {
     setSimulationParams(prev => ({ ...prev, [param]: typeof prev[param] === 'number' ? Number(value) : value }));
   };
 
+  // Moved fetchRecent before runSimulation because runSimulation depends on it.
+  const fetchRecent = useCallback(async () => {
+    if (!user) return;
+    try {
+      const sims = await listRecentSimulations(user.id);
+      const adaptedSims = sims.map(adaptSimulationToResult);
+      setRecentSimulations(adaptedSims);
+    } catch (err) {
+      console.error("Failed to fetch recent simulations:", err);
+    }
+  }, [user]);
+
   const runSimulation = useCallback(async () => {
     if (!user) {
       toast({ title: "Authentication Error", description: "Please log in to run simulations.", variant: "destructive" });
@@ -132,7 +144,7 @@ const SimulationCard = () => {
         setSimulationResult(adaptedResult);
         setActiveSimulationId(result.id);
         toast({ title: "Simulation Started", description: "Results will update live." });
-        fetchRecent();
+        fetchRecent(); // Now correctly called after its declaration
       } else {
         setError("Failed to start simulation. Please try again.");
         toast({ title: "Simulation Error", description: "Could not start simulation.", variant: "destructive" });
@@ -144,18 +156,7 @@ const SimulationCard = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [simulationParams, user, fetchRecent]); // Added fetchRecent to dependency array
-
-  const fetchRecent = useCallback(async () => {
-    if (!user) return;
-    try {
-      const sims = await listRecentSimulations(user.id);
-      const adaptedSims = sims.map(adaptSimulationToResult);
-      setRecentSimulations(adaptedSims);
-    } catch (err) {
-      console.error("Failed to fetch recent simulations:", err);
-    }
-  }, [user]);
+  }, [simulationParams, user, fetchRecent]);
 
   useEffect(() => {
     fetchRecent();
@@ -167,20 +168,23 @@ const SimulationCard = () => {
     const onUpdate = (payload: RealtimePostgresChangesPayload<Simulation>) => {
       console.log('Live simulation update received via subscription:', payload);
       
-      if (payload.new && payload.new.id === activeSimulationId) {
+      // Added 'id' in payload.new check for type safety
+      if (payload.new && 'id' in payload.new && payload.new.id === activeSimulationId) {
+        const currentId = (payload.new as Simulation).id; // Ensure we have an id
         const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
         
         setSimulationResult(prev => {
-          const currentId = prev?.id || activeSimulationId; 
+          // const currentId = prev?.id || activeSimulationId; // This line was problematic if prev is null and payload is also an update.
           return { 
             ...prev, 
             ...adaptedUpdate, 
-            id: currentId 
+            id: currentId // Use the id from the payload.new or existing id
           };
         });
-      } else if (payload.eventType === 'UPDATE' && payload.new && payload.new.id === activeSimulationId) {
+      } else if (payload.eventType === 'UPDATE' && payload.new && 'id' in payload.new && (payload.new as Simulation).id === activeSimulationId) {
+         const currentId = (payload.new as Simulation).id;
          const adaptedUpdate = adaptSimulationToResult(payload.new as Simulation);
-         setSimulationResult(prev => ({ ...prev, ...adaptedUpdate, id: prev?.id || activeSimulationId }));
+         setSimulationResult(prev => ({ ...prev, ...adaptedUpdate, id: prev?.id || currentId }));
       }
     };
     
@@ -214,7 +218,7 @@ const SimulationCard = () => {
     return null;
   };
   
-  const emblaOptions: EmblaOptionsType = { loop: false, align: 'start' }; // EmblaOptionsType usage corrected by import
+  const emblaOptions: EmblaOptionsType = { loop: false, align: 'start' };
 
   if (!user) {
     return (
