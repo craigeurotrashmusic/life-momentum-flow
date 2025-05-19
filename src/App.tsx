@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import { ClarityHubProvider } from './contexts/ClarityHubContext';
 import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from "@/hooks/use-toast";
 
 // Set up with default options
 const queryClient = new QueryClient({
@@ -68,49 +69,51 @@ const App = () => {
       <TooltipProvider>
         <AuthProvider>
           <ClarityHubProvider>
-            <Toaster />
-            <Sonner position="bottom-center" closeButton toastOptions={{ style: { borderRadius: '0.75rem' } }} />
-            <BrowserRouter>
-              {/* Added padding-top to account for fixed header */}
-              <div className="pt-[var(--header-height)] min-h-screen">
-                <Routes>
-                  {/* Root path - entry point for all users */}
-                  <Route 
-                    path="/" 
-                    element={
-                      isAuthenticated 
-                        ? <Home /> 
-                        : hasCompletedOnboarding 
-                          ? <Navigate to="/auth" replace /> 
-                          : <Navigate to="/onboarding" replace />
-                    } 
-                  />
-                  
-                  {/* Auth route - handles both login and signup */}
-                  <Route 
-                    path="/auth" 
-                    element={
-                      isAuthenticated 
-                        ? <Navigate to="/" replace /> 
-                        : <Auth />
-                    } 
-                  />
-                  
-                  {/* Onboarding route - for new users who haven't completed onboarding */}
-                  <Route 
-                    path="/onboarding" 
-                    element={
-                      hasCompletedOnboarding 
-                        ? <Navigate to="/auth" replace />
-                        : <Onboarding />
-                    } 
-                  />
-                  
-                  {/* Catch all route */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </BrowserRouter>
+            <ToastProvider>
+              <Toaster />
+              <Sonner position="bottom-center" closeButton toastOptions={{ style: { borderRadius: '0.75rem' } }} />
+              <BrowserRouter>
+                {/* Added padding-top to account for fixed header */}
+                <div className="pt-[var(--header-height)] min-h-screen">
+                  <Routes>
+                    {/* Root path - entry point for all users */}
+                    <Route 
+                      path="/" 
+                      element={
+                        isAuthenticated 
+                          ? <Home /> 
+                          : hasCompletedOnboarding 
+                            ? <Navigate to="/auth" replace /> 
+                            : <Navigate to="/onboarding" replace />
+                      } 
+                    />
+                    
+                    {/* Auth route - handles both login and signup */}
+                    <Route 
+                      path="/auth" 
+                      element={
+                        isAuthenticated 
+                          ? <Navigate to="/" replace /> 
+                          : <Auth />
+                      } 
+                    />
+                    
+                    {/* Onboarding route - for new users who haven't completed onboarding */}
+                    <Route 
+                      path="/onboarding" 
+                      element={
+                        hasCompletedOnboarding 
+                          ? <Navigate to="/auth" replace />
+                          : <Onboarding />
+                      } 
+                    />
+                    
+                    {/* Catch all route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </div>
+              </BrowserRouter>
+            </ToastProvider>
           </ClarityHubProvider>
         </AuthProvider>
       </TooltipProvider>

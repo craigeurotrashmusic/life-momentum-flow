@@ -1,8 +1,6 @@
 
-// src/hooks/use-toast.ts
+import * as React from "react";
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
-import { useToast as useToastInternal } from "@radix-ui/react-toast";
-import { toast as toastInternal } from "@radix-ui/react-toast";
 
 export type Toast = {
   id: string;
@@ -131,6 +129,51 @@ export const reducer = (state: State, action: Action): State => {
   }
 };
 
+// Create a context to store the toast state
+type ToastContextType = {
+  toasts: ToasterToast[];
+  toast: (props: Omit<ToasterToast, "id">) => {
+    id: string;
+    dismiss: () => void;
+    update: (props: ToasterToast) => void;
+  };
+  dismiss: (toastId?: string) => void;
+};
+
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
+
+// Initialize with an empty toast array
+const initialState: State = { toasts: [] };
+
+export function ToastProvider({ children }: { children: React.ReactNode }) {
+  const [state, setState] = React.useState<State>(initialState);
+
+  React.useEffect(() => {
+    const listener = (updatedState: State) => {
+      setState(updatedState);
+    };
+    
+    listeners.push(listener);
+    
+    return () => {
+      const index = listeners.indexOf(listener);
+      if (index > -1) {
+        listeners.splice(index, 1);
+      }
+    };
+  }, []);
+
+  return (
+    <ToastContext.Provider value={{ 
+      toasts: state.toasts,
+      toast,
+      dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+    }}>
+      {children}
+    </ToastContext.Provider>
+  );
+}
+
 const listeners: Array<(state: State) => void> = [];
 
 let memoryState: State = { toasts: [] };
@@ -172,8 +215,11 @@ export function toast({ ...props }: Omit<ToasterToast, "id">) {
 }
 
 export function useToast() {
-  return {
-    toast,
-    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
-  };
+  const context = React.useContext(ToastContext);
+  
+  if (context === undefined) {
+    throw new Error("useToast must be used within a ToastProvider");
+  }
+  
+  return context;
 }

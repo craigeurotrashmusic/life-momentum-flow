@@ -257,13 +257,14 @@
 
   /* Glass card from existing, might need re-evaluation with new theme */
   .glass-card {
-    /* background-color: var(--brand-mint) !important; */
+    /* background-color: var(--brand-mint); Example override */
     /* opacity: 0.85; */
     @apply bg-secondary/50 backdrop-blur-lg border border-white/10 shadow-lg;
   }
 }
 
 /* Keep other existing styles like .card-stack etc. */
+/* ... keep existing code (card-stack, carousel, animation styles, etc.) */
 
 .card-stack {
   width: 100%;
